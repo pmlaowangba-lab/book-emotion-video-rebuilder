@@ -1,0 +1,16 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+*.env
+!assets/volcengine.env.example
+output/
+*.log
+assets/bgm-library/*.mp3
+assets/bgm-library/*.wav
+assets/bgm-library/*.flac
+assets/bgm-library/*.m4a
+dist/
+build/

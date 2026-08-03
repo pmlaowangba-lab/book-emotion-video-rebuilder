@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "selection_policy": "user_provided_only",
+  "usage": "情绪读书视频的优先 BGM 候选库",
+  "mix_priority": "保留乐器和和声情绪，单独压低演唱，始终保证口播可懂度",
+  "tracks": [
+    {
+      "id": "yuan-qu-de-lie-che-si-xi-wan-zi",
+      "title": "远去的列车",
+      "artist": "四熹丸子",
+      "file": "远去的列车-四熹丸子-完整版.mp3",
+      "status": "user_must_supply",
+      "source_scope": "user_provided_local_file",
+      "source_format": "FLAC",
+      "duration_seconds": 240.417,
+      "bitrate_kbps": 320,
+      "sha256": "369959c5d28be872abdd4fe7eec8ead72db7992dcf40eece1fe71d48a808d01e",
+      "emotion_tags": ["离开", "告别", "自救", "重新开始"],
+      "preferred_sections": ["前奏", "间奏", "尾奏", "低演唱段"],
+      "vocal_policy": "instrumental_first_or_attenuate_vocal"
+    },
+    {
+      "id": "feng-huang-hua-kai-de-lu-kou-lin-zhi-xuan",
+      "title": "凤凰花开的路口",
+      "artist": "林志炫",
+      "file": "凤凰花开的路口-林志炫-完整版.mp3",
+      "status": "user_must_supply",
+      "source_scope": "user_provided_local_file",
+      "source_format": "FLAC",
+      "duration_seconds": 241.989,
+      "bitrate_kbps": 320,
+      "sha256": "1e363da44daf3444a7842381773c41864e2682dd38f2a0ebed1ead1d2f21a796",
+      "emotion_tags": ["青春", "告别", "遗憾", "怀念", "释怀"],
+      "preferred_sections": ["低演唱段", "乐器尾韵"],
+      "vocal_policy": "separate_or_center_attenuate_before_mix"
+    },
+    {
+      "id": "yi-hun-yi-su-mao-bu-yi",
+      "title": "一荤一素",
+      "artist": "毛不易",
+      "album": "平凡的一天",
+      "file": "一荤一素-毛不易-完整版.mp3",
+      "status": "user_must_supply",
+      "source_scope": "user_provided_local_file",
+      "source_format": "FLAC",
+      "duration_seconds": 281.347,
+      "bitrate_kbps": 320,
+      "sha256": "6ff9083b5261b374a9a27946c7f220f229b1c7ac89d5bde9d228f8e33e0d75a4",
+      "emotion_tags": ["亲情", "思念", "遗憾", "被理解", "珍惜", "告别"],
+      "preferred_sections": ["前奏", "间奏", "低演唱段", "尾奏"],
+      "vocal_policy": "separate_or_center_attenuate_before_mix"
+    }
+  ]
+}
