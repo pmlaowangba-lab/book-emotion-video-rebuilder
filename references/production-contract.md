@@ -383,8 +383,8 @@ python3 <skill_root>/scripts/migrate_manifest_v8.py --project <project_dir>
   "stages": [
     {"id": "hook", "start": 0.0, "end": 1.35, "voice_intent": "低声情绪认证", "music_action": "底床立即进入"},
     {"id": "mask_expand", "start": 1.35, "end": 2.9, "voice_intent": "完成钩子并开始今天分享的是", "music_action": "增加轻空气纹理"},
-    {"id": "carousel", "start": 2.9, "end": 4.1, "voice_intent": "说完今天分享的是并保留书名前停顿", "music_action": "连续轻脉冲，无逐卡音效"},
-    {"id": "book_lock", "start": 4.1, "end": 5.55, "voice_intent": "低位结实下收地单独念书名，念完保留正文前停顿", "music_action": "短暂收窄后恢复"}
+    {"id": "carousel", "start": 2.9, "end": "book_title_delivery.title_start_seconds", "voice_intent": "说完今天分享的是并保留书名前停顿", "music_action": "连续轻脉冲，无逐卡音效"},
+    {"id": "book_lock", "start": "book_title_delivery.title_start_seconds", "end": "book_title_delivery.body_start_seconds", "voice_intent": "低位结实下收地单独念书名，念完保留正文前停顿", "music_action": "短暂收窄后恢复"}
   ]
 }
 ```
@@ -586,7 +586,7 @@ python3 <skill_root>/scripts/migrate_manifest_v8.py --project <project_dir>
     {"id": "voice-01", "type": "voice", "start": 0.0, "end": 53.7, "asset": "05-配音/voice-v001.wav", "volume": 1.0},
     {"id": "bgm-01", "type": "bgm", "start": 0.0, "end": 53.7, "asset": "06-配乐音效/bgm-v001.wav", "volume": 0.22, "fade_in": 0.2, "fade_out": 0.4}
   ],
-  "bookMeta": {"start": 4.1, "end": 53.7, "title": "《书名》", "author": "作者"},
+  "bookMeta": {"start": 5.366667, "end": 53.7, "title": "《书名》", "author": "作者"},
   "accentTrack": [],
   "transitionTrack": [
     {"from": "scene-01", "to": "scene-02", "start": 13.8, "end": 14.0, "duration": 0.2, "type": "short_fade", "reason": "emotional_continuity"}

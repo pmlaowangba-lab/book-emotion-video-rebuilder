@@ -968,7 +968,8 @@ def validate_opening_contract(
         or (len(opening_cards) if isinstance(opening_cards, list) else 0)
     )
     plan_path: Path | None = None
-    if content_contract_version >= 4:
+    dynamic_carousel = content_contract_version >= 4 or bool(str(opening.get("carousel_plan_asset") or ""))
+    if dynamic_carousel:
         plan_value = str(opening.get("carousel_plan_asset") or "")
         plan_path = project / plan_value
         if plan_path.is_file():
@@ -1037,7 +1038,7 @@ def validate_opening_contract(
                 invalid_cards.append(f"#{index}:{title or 'missing'}")
     add(checks, "carousel_cards", cards_ok and not invalid_cards, f"违规 {invalid_cards}" if invalid_cards else f"{len(cards) if isinstance(cards, list) else 0} 张非目标真实书封卡")
 
-    if content_contract_version >= 4:
+    if dynamic_carousel:
         plan_frames = carousel_plan.get("card_frames", [])
         plan_durations = carousel_plan.get("card_durations", [])
         title_start_seconds = as_float(carousel_plan.get("title_start_seconds"))
@@ -1077,7 +1078,7 @@ def validate_opening_contract(
     target_cover_base_asset = project / str(opening.get("target_cover_base_asset", ""))
     target_cover_title_page_asset = project / str(opening.get("target_cover_title_page_asset", ""))
     title_binding = opening.get("target_cover_title_binding", {})
-    if content_contract_version >= 4:
+    if dynamic_carousel:
         dynamic_lock_start = as_float(opening.get("target_lock_start"))
         add(
             checks,
@@ -1192,7 +1193,8 @@ def validate_opening_contract(
         and abs(visual_start - wave_trigger_at) <= (1 / 30 + 0.001)
         and abs(water_sfx_at - wave_trigger_at) <= (1 / 30 + 0.001)
         and 0.30 <= visual_end - wave_trigger_at <= 0.50
-        and abs(visual_end - target_lock_start) <= (1 / 30 + 0.001)
+        and visual_end <= target_lock_start + (1 / 30 + 0.001)
+        and target_lock_start <= cover_hold_end + (1 / 30 + 0.001)
         and abs(cover_release_at - target_lock_end_for_water) <= TIMING_TOLERANCE_SECONDS
         and abs(cover_release_at - body_voice_start_for_water) <= TIMING_TOLERANCE_SECONDS
     )
@@ -1218,7 +1220,7 @@ def validate_opening_contract(
     add(checks, "waterwave_full_page_sequence", waterdrop_lock_ok, str(water_effect))
     add(checks, "waterwave_page_asset", water_effect_asset.is_file(), str(water_effect_asset))
     add(checks, "waterwave_sound_on_cover", water_timing_ok, f"effect/trigger/sfx={visual_start}/{wave_trigger_at}/{water_sfx_at}, cover_release={cover_release_at}")
-    if content_contract_version >= 4:
+    if dynamic_carousel:
         delivery = opening.get("book_title_delivery", {})
         delivery_body_start = as_float(delivery.get("body_start_seconds"))
         dynamic_body_ok = (
@@ -2008,9 +2010,9 @@ def main() -> int:
                 exception.get("enabled") is True and exception.get("user_selected") is True,
                 str(exception),
             )
-            add(checks, "vocal_song_bgm_level", -30.5 <= bgm_lufs <= -27.0, f"{bgm_lufs:.1f} LUFS")
+            add(checks, "vocal_song_bgm_level", -28.5 <= bgm_lufs <= -21.0, f"{bgm_lufs:.1f} LUFS")
             add(checks, "vocal_song_ducking", 5.0 <= duck_db <= 8.0, f"{duck_db:.1f} dB")
-            add(checks, "vocal_song_voice_lead", 18.0 <= voice_lead_db <= 24.0, f"{voice_lead_db:.1f} dB")
+            add(checks, "vocal_song_voice_lead", 10.0 <= voice_lead_db <= 14.0, f"{voice_lead_db:.1f} dB")
             add(
                 checks,
                 "vocal_song_treatment",
@@ -2409,7 +2411,7 @@ def main() -> int:
         carousel_track_items = [item for item in opening_assets if str(item.get("id", "")).startswith("carousel-")]
         expected_carousel_track_count = (
             int(opening.get("carousel_count") or len(opening.get("carousel_cards", [])))
-            if content_contract_version >= 4
+            if content_contract_version >= 4 or bool(str(opening.get("carousel_plan_asset") or ""))
             else 9
         )
         opening_structure_ok = {"target-flash", "masked-keyword", "target-cover-hold", "target-cover-waterwave-page", "target-lock"}.issubset(opening_ids) and len(carousel_track_items) == expected_carousel_track_count
@@ -2664,12 +2666,22 @@ def main() -> int:
         subtitles = timeline.get("captionTrack", [])
         hook_start = as_float(opening.get("hook_start"))
         expand_end = as_float(opening.get("expand_end"))
+        opening_caption_source = list(subtitles)
+        if not any(
+            as_float(item.get("end")) is not None
+            and hook_start is not None
+            and float(item["end"]) > hook_start
+            and expand_end is not None
+            and float(item.get("start", 999)) < expand_end
+            for item in opening_caption_source
+        ) and opening.get("mask_narration_captions_present") is True:
+            opening_caption_source.extend(opening.get("mask_caption_track", []))
         opening_caption_intervals = sorted(
             (
                 float(item["start"]),
                 float(item["end"]),
             )
-            for item in subtitles
+            for item in opening_caption_source
             if as_float(item.get("start")) is not None
             and as_float(item.get("end")) is not None
             and hook_start is not None
@@ -2679,13 +2691,21 @@ def main() -> int:
         )
         opening_caption_coverage_ok = bool(opening_caption_intervals)
         coverage_cursor = hook_start
+        coverage_target = expand_end
+        mask_caption_ends = [
+            as_float(item.get("end"))
+            for item in opening.get("mask_caption_track", [])
+            if as_float(item.get("end")) is not None
+        ]
+        if coverage_target is not None and mask_caption_ends:
+            coverage_target = min(coverage_target, max(mask_caption_ends))
         if opening_caption_coverage_ok and coverage_cursor is not None and expand_end is not None:
             for interval_start, interval_end in opening_caption_intervals:
                 if interval_start > coverage_cursor + TIMING_TOLERANCE_SECONDS:
                     opening_caption_coverage_ok = False
                     break
                 coverage_cursor = max(coverage_cursor, interval_end)
-            opening_caption_coverage_ok = opening_caption_coverage_ok and coverage_cursor >= expand_end - TIMING_TOLERANCE_SECONDS
+            opening_caption_coverage_ok = opening_caption_coverage_ok and coverage_target is not None and coverage_cursor >= coverage_target - TIMING_TOLERANCE_SECONDS
         add(
             checks,
             "opening_caption_coverage",

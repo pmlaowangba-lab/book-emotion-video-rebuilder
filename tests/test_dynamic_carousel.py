@@ -1,9 +1,11 @@
 import importlib.util
+import json
 from pathlib import Path
 import unittest
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "plan_book_carousel.py"
+LIBRARY_MANIFEST = Path(__file__).resolve().parents[1] / "assets" / "book-card-library" / "manifest.json"
 
 
 def load_module():
@@ -37,6 +39,14 @@ class DynamicCarouselTests(unittest.TestCase):
         self.assertEqual(plan["total_carousel_frames"], 44)
         self.assertEqual(plan["card_count"], 11)
         self.assertEqual(plan["card_frames"], [4] * 11)
+
+    def test_skill_owned_library_has_24_existing_covers_and_excludes_target(self):
+        module = load_module()
+        manifest = json.loads(LIBRARY_MANIFEST.read_text(encoding="utf-8"))
+        self.assertEqual(manifest["cover_count"], 24)
+        self.assertEqual(len(manifest["covers"]), 24)
+        self.assertTrue(all((LIBRARY_MANIFEST.parent / item["file"]).is_file() for item in manifest["covers"]))
+        self.assertEqual(module.available_cover_count(manifest, LIBRARY_MANIFEST, "活着"), 23)
 
 
 if __name__ == "__main__":
