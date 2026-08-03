@@ -126,7 +126,7 @@ python scripts/check_environment.py
 python -m py_compile scripts/*.py
 ```
 
-`scripts/check_environment.py` 的 `MISSING` 会阻断核心脚本；`OPTIONAL` 表示只影响 TTS、BGM、Grok 或剪映草稿等对应分支。
+`scripts/check_environment.py` 的 `MISSING` 会阻断核心脚本；`OPTIONAL` 表示只影响 TTS、BGM、Grok、LTX 本地动态或剪映草稿等对应分支。LTX 必须另外设置 `LTX_VIDEO_LOCAL_ROOT`，文件检查通过后仍要完成单镜头 probe 才能在 Skill 中启用。
 
 ## 素材来源
 

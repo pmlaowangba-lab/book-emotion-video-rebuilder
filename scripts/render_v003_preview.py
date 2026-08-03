@@ -276,13 +276,7 @@ def main() -> int:
                 local_wave_time = t - WATERWAVE_EFFECT_START
                 frame = apply_page_water_ripple(frame, local_wave_time)
         elif t < TARGET_LOCK_END:
-            target_hero.set(cv2.CAP_PROP_POS_MSEC, (t - TARGET_LOCK_START) * 1000)
-            ok, hero_frame = target_hero.read()
-            if not ok:
-                hero_frame = target_hero_first.copy()
-            else:
-                hero_frame = cv2.resize(hero_frame, (W, H), interpolation=cv2.INTER_CUBIC)
-            frame = target_lock_frame(hero_frame, t)
+            frame = target_cover.copy()
         else:
             scene_idx = 3
             for idx, (start, end) in enumerate(scene_ranges):
@@ -304,12 +298,12 @@ def main() -> int:
                     break
             frame = blend_overlay(frame, header_title)
             frame = blend_overlay(frame, header_author)
-            for cap in timeline["captionTrack"]:
-                if float(cap["start"]) <= t < float(cap["end"]):
-                    zh, en = caption_layers[cap["id"]]
-                    frame = blend_overlay(frame, zh)
-                    frame = blend_overlay(frame, en)
-                    break
+        for cap in timeline["captionTrack"]:
+            if float(cap["start"]) <= t < float(cap["end"]):
+                zh, en = caption_layers[cap["id"]]
+                frame = blend_overlay(frame, zh)
+                frame = blend_overlay(frame, en)
+                break
         ffmpeg.stdin.write(frame.tobytes())
     ffmpeg.stdin.close()
     if ffmpeg.wait() != 0:
@@ -398,7 +392,7 @@ def main() -> int:
         "wave_trigger_at": WATERWAVE_TRIGGER,
         "sfx_at": WATERWAVE_TRIGGER,
         "visual_end": TARGET_LOCK_START,
-        "hero_cut_at": TARGET_LOCK_START,
+        "cover_release_at": TARGET_LOCK_END,
         "literal_water_graphic": False,
         "overlay_graphic": False,
         "visible_ring": False,
@@ -425,9 +419,11 @@ def main() -> int:
         if item["id"] == "target-lock":
             item["start"] = TARGET_LOCK_START
             item["end"] = TARGET_LOCK_END
-            item["asset"] = target_hero_rel
+            item["asset"] = str(target_cover_asset.relative_to(project))
             item["transition_in"] = "hard_cut"
-            item["motion"] = {"type": "grok_video", "scale_start": 1.0, "scale_end": 1.0, "pan_x": 0, "pan_y": 0}
+            item["transition_out"] = "hard_cut"
+            item["cover_visible_while_title_spoken"] = True
+            item["motion"] = {"type": "cover_title_hold", "scale_start": 1.0, "scale_end": 1.0}
             item["title_motion"] = new_timeline["opening"]["title_motion"]
     new_timeline["openingTrack"] = [item for item in new_timeline["openingTrack"] if item.get("id") not in {"target-lock-water-fx", "target-cover-waterdrop-fx", "target-cover-waterwave-fx", "target-cover-waterwave-page", "target-cover-hold"}]
     new_timeline["openingTrack"].append({

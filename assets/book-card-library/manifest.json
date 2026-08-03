@@ -1,0 +1,32 @@
+{
+  "version": "v001",
+  "purpose": "skill_owned_real_book_cover_carousel_library",
+  "selection_rule": "filename_prefix_ascending_exclude_target_title",
+  "cover_count": 24,
+  "covers": [
+    {"order": 1, "file": "covers/01-the-little-prince.jpg", "titleZh": "小王子", "author": "Antoine de Saint-Exupéry"},
+    {"order": 2, "file": "covers/02-1984.jpg", "titleZh": "1984", "author": "George Orwell"},
+    {"order": 3, "file": "covers/03-animal-farm.jpg", "titleZh": "动物农场", "author": "George Orwell"},
+    {"order": 4, "file": "covers/04-the-great-gatsby.jpg", "titleZh": "了不起的盖茨比", "author": "F. Scott Fitzgerald"},
+    {"order": 5, "file": "covers/05-pride-and-prejudice.jpg", "titleZh": "傲慢与偏见", "author": "Jane Austen"},
+    {"order": 6, "file": "covers/06-crime-and-punishment.jpg", "titleZh": "罪与罚", "author": "Fyodor Dostoevsky"},
+    {"order": 7, "file": "covers/07-the-stranger.jpg", "titleZh": "局外人", "author": "Albert Camus"},
+    {"order": 8, "file": "covers/08-walden.jpg", "titleZh": "瓦尔登湖", "author": "Henry David Thoreau"},
+    {"order": 9, "file": "covers/09-the-art-of-war.jpg", "titleZh": "孙子兵法", "author": "Sun Tzu"},
+    {"order": 10, "file": "covers/10-meditations.jpg", "titleZh": "沉思录", "author": "Marcus Aurelius"},
+    {"order": 11, "file": "covers/11-the-old-man-and-the-sea.jpg", "titleZh": "老人与海", "author": "Ernest Hemingway"},
+    {"order": 12, "file": "covers/12-mans-search-for-meaning.jpg", "titleZh": "活出生命的意义", "author": "Viktor E. Frankl"},
+    {"order": 13, "file": "covers/13-the-alchemist.jpg", "titleZh": "牧羊少年奇幻之旅", "author": "Paulo Coelho"},
+    {"order": 14, "file": "covers/14-the-kite-runner.jpg", "titleZh": "追风筝的人", "author": "Khaled Hosseini"},
+    {"order": 15, "file": "covers/15-norwegian-wood.jpg", "titleZh": "挪威的森林", "author": "Haruki Murakami"},
+    {"order": 16, "file": "covers/16-thinking-fast-and-slow.jpg", "titleZh": "思考，快与慢", "author": "Daniel Kahneman"},
+    {"order": 17, "file": "covers/17-sapiens.jpg", "titleZh": "人类简史", "author": "Yuval Noah Harari"},
+    {"order": 18, "file": "covers/18-atomic-habits.jpg", "titleZh": "原子习惯", "author": "James Clear"},
+    {"order": 19, "file": "covers/19-the-psychology-of-money.jpg", "titleZh": "金钱心理学", "author": "Morgan Housel"},
+    {"order": 20, "file": "covers/20-the-moon-and-sixpence.jpg", "titleZh": "月亮与六便士", "author": "W. Somerset Maugham"},
+    {"order": 21, "file": "covers/21-the-brothers-karamazov.jpg", "titleZh": "卡拉马佐夫兄弟", "author": "Fyodor Dostoevsky"},
+    {"order": 22, "file": "covers/22-to-live.jpg", "titleZh": "活着", "author": "余华"},
+    {"order": 23, "file": "covers/23-how-to-win-friends.jpg", "titleZh": "人性的弱点", "author": "Dale Carnegie"},
+    {"order": 24, "file": "covers/24-the-crowd-target.jpg", "titleZh": "乌合之众", "author": "Gustave Le Bon"}
+  ]
+}

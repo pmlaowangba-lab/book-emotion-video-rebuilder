@@ -1,4 +1,4 @@
 interface:
-  display_name: "情绪读书高清双交付"
-  short_description: "固定两字遮罩与书名前后停顿，并行生成高清成片和剪映草稿"
-  default_prompt: "使用 $book-emotion-video-rebuilder 先确认两字毛笔遮罩，并按“今天分享的是—停顿—书名—停顿”节奏完成情绪读书高清成片和剪映草稿。"
+  display_name: "情绪读书动态轮播视频"
+  short_description: "按真实书名时码计算封面轮播并交付高清成片与剪映草稿"
+  default_prompt: "使用 $book-emotion-video-rebuilder 按开头文案预估、再按真实书名时码重算封面轮播数量，完成情绪读书高清成片和剪映草稿。"

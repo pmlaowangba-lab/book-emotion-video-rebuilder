@@ -13,6 +13,7 @@ import json
 import math
 import subprocess
 from pathlib import Path
+from typing import Optional
 
 import cv2
 import numpy as np
@@ -109,6 +110,14 @@ def write_srt(path: Path, captions: list[dict], field: str) -> None:
     path.write_text("\n".join(blocks), encoding="utf-8")
 
 
+def active_caption(captions: list[dict], time_seconds: float) -> Optional[dict]:
+    """Return the complete caption segment visible at the current frame."""
+    for caption in captions:
+        if float(caption["start"]) <= time_seconds < float(caption["end"]):
+            return caption
+    return None
+
+
 def build_opening_track(opening: dict) -> list[dict]:
     title_binding = opening.get("target_cover_title_binding", {})
     cover_start = float(opening.get("target_cover_hold_start", 4.1))
@@ -130,7 +139,7 @@ def build_opening_track(opening: dict) -> list[dict]:
     track.extend([
         {"id": "target-cover-hold", "start": cover_start, "end": cover_end, "asset": opening.get("target_cover_title_page_asset") or opening.get("target_cover_base_asset") or opening.get("target_cover_hold_asset"), "transition_in": "hard_cut", "transition_out": "hard_cut", "motion": {"type": "snap_settle", "scale_start": 1.02, "scale_end": 1.0}, "title_binding": title_binding},
         {"id": "target-cover-waterwave-page", "start": float(wave["visual_start"]), "end": float(wave["visual_end"]), "wave_trigger_at": float(wave["wave_trigger_at"]), "asset": wave["effect_asset"], "source_page_asset": wave.get("source_page_asset"), "includes_title_layer": wave.get("includes_title_layer", False), "layer": "page_effect", "effect_on": "entire_page", "motion": {"type": "full_frame_displacement_map", "page_deformation": True, "overlay_graphic": False, "visible_ring": False}},
-        {"id": "target-lock", "start": float(opening["target_lock_start"]), "end": float(opening["target_lock_end"]), "asset": opening["target_hero_asset"], "transition_in": "hard_cut", "transition_out": "crossfade", "motion": {"type": "smooth_push_in", "scale_start": 1.005, "scale_end": 1.026, "pan_x": 6, "pan_y": 0, "interpolation": "cubic_ease_in_out", "sample_per_frame": True}, "title_motion": opening["title_motion"]},
+        {"id": "target-lock", "start": float(opening["target_lock_start"]), "end": float(opening["body_voice_start"]), "asset": opening.get("target_lock_hold_asset") or opening.get("target_cover_title_page_asset") or opening.get("target_cover_base_asset") or opening.get("target_cover_hold_asset"), "transition_in": "hard_cut", "transition_out": "hard_cut", "motion": {"type": "cover_title_hold", "scale_start": 1.0, "scale_end": 1.0}, "title_motion": opening["title_motion"], "cover_visible_while_title_spoken": True},
     ])
     return track
 
@@ -166,6 +175,7 @@ def main() -> int:
     author = str(manifest["author"])
     opening = read_json(project / f"10-片头字幕/opening-{opening_version}.json")
     image_record = read_json(project / f"07-分镜/image-generation-{visual_version}.json")
+    video_provider = str(manifest.get("defaults", {}).get("video_generation", {}).get("provider", "grok_cli"))
     caption_plan_path = project / f"10-片头字幕/subtitles-{caption_version}.json"
     caption_plan = read_json(caption_plan_path)
     captions = caption_plan["captions"]
@@ -310,12 +320,11 @@ def main() -> int:
                     break
             frame = overlay(frame, title_layer)
             frame = overlay(frame, author_layer)
-            for caption in captions:
-                if float(caption["start"]) <= time_seconds < float(caption["end"]):
-                    zh_layer, en_layer = caption_layers[caption["id"]]
-                    frame = overlay(frame, zh_layer)
-                    frame = overlay(frame, en_layer)
-                    break
+        caption = active_caption(captions, time_seconds)
+        if caption is not None:
+            zh_layer, en_layer = caption_layers[caption["id"]]
+            frame = overlay(frame, zh_layer)
+            frame = overlay(frame, en_layer)
         encoder.stdin.write(frame.tobytes())
 
     encoder.stdin.close()
@@ -359,7 +368,7 @@ def main() -> int:
         body_video_path = body_video_paths[index]
         uses_video = body_video_path is not None and body_video_path.is_file()
         motion = (
-            {"type": "grok_video", "scale_start": 1.0, "scale_end": 1.0, "pan_x_ratio": 0.0, "pan_y_ratio": 0.0}
+            {"type": "ltx_video" if video_provider == "ltx_local" else "grok_video", "scale_start": 1.0, "scale_end": 1.0, "pan_x_ratio": 0.0, "pan_y_ratio": 0.0}
             if uses_video else
             still_motions[index]
         )
@@ -371,6 +380,7 @@ def main() -> int:
             "emotional_stage": shot["emotional_stage"],
             "visual_change_reason": visual_change_reasons[index] if index < len(visual_change_reasons) else "psychological_state_change",
             "motion": motion,
+            "provider": video_provider if uses_video else "ffmpeg_fallback",
         })
         if index > 0:
             transition = dict(transition_specs[index - 1])
@@ -390,7 +400,7 @@ def main() -> int:
         "audioTrack": [
             {"id": f"voice-{voice_version}", "type": "voice", "start": 0.0, "end": duration, "asset": f"05-配音/voice-{voice_version}.wav", "volume": 1.0},
             {"id": f"bgm-{sound_version}", "type": "bgm", "start": 0.0, "end": duration, "asset": f"06-配乐音效/bgm-{sound_version}.wav", "volume": 1.0, "source_scope": "user_provided_local_file"},
-            {"id": f"sfx-carousel-{sound_version}", "type": "sfx", "start": 2.942, "end": 4.075, "asset": f"06-配乐音效/sfx-carousel-{sound_version}.wav", "volume": 1.0},
+            {"id": f"sfx-carousel-{sound_version}", "type": "sfx", "start": float(opening["carousel_start"]), "end": float(opening["carousel_end"]), "asset": f"06-配乐音效/sfx-carousel-{sound_version}.wav", "volume": 1.0},
             {"id": f"sfx-waterdrop-{sound_version}", "type": "sfx", "start": float(opening["waterdrop_lock_response"]["sfx_at"]), "end": float(opening["target_lock_end"]), "asset": f"06-配乐音效/sfx-lock-{sound_version}.wav", "volume": 1.0},
         ],
         "bookMeta": {"start": float(opening.get("target_cover_title_binding", {}).get("title_start", opening["target_lock_start"])), "end": duration, "title": title, "author": author, "cover": "01-书籍资料/cover-v001.jpg", "waterwave_baked_title_interval": [float(opening["waterdrop_lock_response"]["visual_start"]), float(opening["waterdrop_lock_response"]["visual_end"])]},

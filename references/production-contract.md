@@ -70,7 +70,16 @@
       "mode": "reference_to_video",
       "auth_mode": "membership_oauth_only",
       "motion_profile": "restrained_micro_motion",
-      "selection_mode": "default"
+      "selection_mode": "default",
+      "allowed_providers": ["grok_cli", "ltx_local", "ffmpeg_fallback"],
+      "optional_local_provider": {
+        "provider": "ltx_local",
+        "root_env": "LTX_VIDEO_LOCAL_ROOT",
+        "model": "prince-canuma/LTX-2.3-dev",
+        "text_encoder": "mlx-community/gemma-3-12b-it-4bit",
+        "pipeline": "dev-two-stage-hq",
+        "requires_probe_status": "approved"
+      }
     },
     "typography": {
       "chinese_font_id": "yrdzst-heavy",
@@ -78,7 +87,7 @@
       "english_font_family": "Georgia"
     },
     "content": {
-      "contract_version": 3,
+      "contract_version": 4,
       "entry_mode": "direct_theme",
       "max_script_seconds": 60,
       "preferred_han_count": [245, 268],
@@ -107,6 +116,18 @@
         "title_emphasis": "firm_low_falling",
         "timing_evidence_required": true,
         "fallback": "pause_only_postprocess"
+      },
+      "carousel_timing": {
+        "mode": "voice_timing_derived",
+        "fps": 30,
+        "carousel_start_seconds": 2.9,
+        "target_cover_lead_frames": 0,
+        "card_frame_range": [3, 4],
+        "minimum_cards": 6,
+        "estimate_formula": "(hook_han + lead_text_han) / chars_per_second + pre_title_pause",
+        "final_timing_source": "voice_actual",
+        "final_replan_required": true,
+        "insufficient_library_policy": "block_expand_library"
       },
       "forbidden_confirmation_openings": [
         "你是不是也这样",
@@ -511,43 +532,55 @@ python3 <skill_root>/scripts/migrate_manifest_v8.py --project <project_dir>
     "keyword_mask_style": "custom_reviewed",
     "keyword_mask_asset": "10-片头字幕/keyword-mask-v001.png",
     "masked_keyword_video_asset": "10-片头字幕/masked-keyword-expand-v001.mp4",
+    "mask_narration_captions_present": true,
+    "mask_caption_track": [
+      {"id": "mask-cap-01", "text": "片头配音字幕一", "start": 0.1, "end": 1.35},
+      {"id": "mask-cap-02", "text": "片头配音字幕二", "start": 1.35, "end": 2.9}
+    ],
     "expand_start": 1.35,
     "expand_end": 2.9,
     "carousel_start": 2.9,
-    "carousel_end": 4.1,
-    "card_durations": [0.10, 0.13, 0.13, 0.13, 0.13, 0.13, 0.13, 0.13, 0.13],
+    "carousel_end": 5.366667,
+    "carousel_count": 19,
+    "carousel_plan_asset": "10-片头字幕/carousel-plan-v001.json",
+    "card_durations": [0.1, 0.133333, 0.133333, 0.133333, 0.133333, 0.133333, 0.133333, 0.133333, 0.133333, 0.1, 0.133333, 0.133333, 0.133333, 0.133333, 0.133333, 0.133333, 0.133333, 0.133333, 0.133333],
     "carousel_motion": {"type": "snap_settle", "scale_start": 1.035, "scale_end": 1.0, "soft_focus_px": 1.5, "transition": "hard_cut"},
     "carousel_cards": [
       {"title": "老人与海", "role": "carousel", "asset": "10-片头字幕/carousel-v001/card-01-老人与海-v001.png"}
     ],
-    "target_cover_hold_start": 4.1,
-    "target_cover_hold_end": 4.85,
+    "target_cover_hold_start": 5.366667,
+    "target_cover_hold_end": 6.116667,
     "target_cover_base_asset": "10-片头字幕/v001/target-cover-base-v001.png",
     "target_cover_title_page_asset": "10-片头字幕/v001/target-cover-title-page-v001.png",
-    "target_cover_title_binding": {"mode": "same_page_as_cover", "title_start": 4.1, "title_settle_end": 4.43, "title_above_cover": true, "cover_visible_during_title_motion": true, "visible_through_waterwave": true, "persist_to_body": true, "title_safe_area": {"top": 60, "bottom": 220}, "cover_safe_area": {"top": 240, "bottom": 1320}},
-    "target_lock_start": 4.85,
-    "target_lock_end": 5.55,
+    "target_cover_title_binding": {"mode": "same_page_as_cover", "title_start": 5.366667, "title_settle_end": 5.7, "title_above_cover": true, "cover_visible_during_title_motion": true, "visible_through_waterwave": true, "cover_visible_while_title_spoken": true, "persist_to_body": true, "title_safe_area": {"top": 60, "bottom": 220}, "cover_safe_area": {"top": 240, "bottom": 1320}},
+    "target_lock_start": 6.116667,
+    "target_lock_end": 6.65,
     "target_lock_mode": "cover_waterwave_then_title_drop",
+    "target_lock_hold_asset": "10-片头字幕/v001/target-cover-title-page-v001.png",
+    "cover_persists_until_body": true,
+    "book_title_voice_start": 5.366667,
+    "book_title_voice_end": 5.85,
     "target_hero_asset": "10-片头字幕/target-hero-v001.mp4",
     "title_motion": {"type": "cover_page_title_settle", "settle_frames": 10, "easing": "ease_out_cubic", "start_anchor": "cover_page_upper_center", "end_anchor": "cover_page_top"},
-    "waterdrop_lock_response": {"type": "cover_waterwave_then_title_drop", "effect_on": "entire_page", "effect_style": "full_frame_displacement_map", "effect_scope": "entire_page", "effect_asset": "10-片头字幕/v001/waterwave-page-refraction-v001.mp4", "source_page_asset": "10-片头字幕/v001/target-cover-title-page-v001.png", "includes_title_layer": true, "visual_start": 4.45, "wave_trigger_at": 4.45, "sfx_at": 4.45, "visual_end": 4.85, "hero_cut_at": 4.85, "literal_water_graphic": false, "overlay_graphic": false, "visible_ring": false, "page_deformation": true, "refraction": true, "perceptible_motion": true, "title_keyframes": [{"frame": 0, "scale": 1.50, "opacity": 0.35, "blur_px": 2.5, "y_px": 150, "transform_y": -0.60}, {"frame": 1, "scale": 1.42, "opacity": 0.55, "blur_px": 2.2, "y_px": 139, "transform_y": -0.63}, {"frame": 2, "scale": 1.34, "opacity": 1.0, "blur_px": 1.8, "y_px": 127, "transform_y": -0.66}, {"frame": 5, "scale": 1.18, "opacity": 1.0, "blur_px": 0.0, "y_px": 99, "transform_y": -0.72}, {"frame": 8, "scale": 1.05, "opacity": 1.0, "blur_px": 0.0, "y_px": 78, "transform_y": -0.77}, {"frame": 10, "scale": 1.0, "opacity": 1.0, "blur_px": 0.0, "y_px": 70, "transform_y": -0.79}]},
-    "book_title_delivery": {"lead_text": "今天分享的是", "title_text": "书名", "pre_title_pause_seconds": 0.52, "post_title_pause_seconds": 0.58, "title_emphasis": "firm_low_falling", "timing_source": "05-配音/timing-v001.json"},
-    "body_voice_start": 5.55
+    "waterdrop_lock_response": {"type": "cover_waterwave_then_title_drop", "effect_on": "entire_page", "effect_style": "full_frame_displacement_map", "effect_scope": "entire_page", "effect_asset": "10-片头字幕/v001/waterwave-page-refraction-v001.mp4", "source_page_asset": "10-片头字幕/v001/target-cover-title-page-v001.png", "includes_title_layer": true, "visual_start": 5.716667, "wave_trigger_at": 5.716667, "sfx_at": 5.716667, "visual_end": 6.116667, "cover_release_at": 6.65, "literal_water_graphic": false, "overlay_graphic": false, "visible_ring": false, "page_deformation": true, "refraction": true, "perceptible_motion": true, "title_keyframes": [{"frame": 0, "scale": 1.50, "opacity": 0.35, "blur_px": 2.5, "y_px": 150, "transform_y": -0.60}, {"frame": 1, "scale": 1.42, "opacity": 0.55, "blur_px": 2.2, "y_px": 139, "transform_y": -0.63}, {"frame": 2, "scale": 1.34, "opacity": 1.0, "blur_px": 1.8, "y_px": 127, "transform_y": -0.66}, {"frame": 5, "scale": 1.18, "opacity": 1.0, "blur_px": 0.0, "y_px": 99, "transform_y": -0.72}, {"frame": 8, "scale": 1.05, "opacity": 1.0, "blur_px": 0.0, "y_px": 78, "transform_y": -0.77}, {"frame": 10, "scale": 1.0, "opacity": 1.0, "blur_px": 0.0, "y_px": 70, "transform_y": -0.79}]},
+    "book_title_delivery": {"lead_text": "今天分享的是", "title_text": "书名", "title_start_seconds": 5.366667, "title_end_seconds": 5.85, "body_start_seconds": 6.65, "pre_title_pause_seconds": 0.52, "post_title_pause_seconds": 0.60, "title_emphasis": "firm_low_falling", "timing_source": "05-配音/timing-v001.json"},
+    "body_voice_start": 6.65
   },
   "openingTrack": [
     {"id": "target-flash", "start": 0.0, "end": 0.1, "asset": "10-片头字幕/target-hero-v001.mp4", "transition_out": "hard_cut", "motion": {"type": "static", "scale_start": 1.0, "scale_end": 1.0, "pan_x": 0, "pan_y": 0}},
     {"id": "masked-keyword", "start": 0.1, "end": 2.9, "asset": "10-片头字幕/masked-keyword-expand-v001.mp4", "transition_out": "hard_cut", "motion": {"type": "static", "scale_start": 1.0, "scale_end": 1.0, "pan_x": 0, "pan_y": 0}},
     {"id": "carousel-01", "start": 2.9, "end": 3.13, "asset": "10-片头字幕/carousel-v001/card-01-老人与海-v001.png", "transition_out": "hard_cut", "motion": {"type": "snap_settle", "scale_start": 1.035, "scale_end": 1.0, "soft_focus_px": 1.5, "pan_x": 0, "pan_y": 0}},
-    {"id": "target-cover-hold", "start": 4.1, "end": 4.85, "asset": "10-片头字幕/v001/target-cover-base-v001.png", "transition_in": "hard_cut", "transition_out": "hard_cut", "motion": {"type": "snap_settle", "scale_start": 1.02, "scale_end": 1.0}},
-    {"id": "target-cover-waterwave-page", "start": 4.45, "end": 4.85, "wave_trigger_at": 4.45, "asset": "10-片头字幕/v001/waterwave-page-refraction-v001.mp4", "source_page_asset": "10-片头字幕/v001/target-cover-title-page-v001.png", "includes_title_layer": true, "layer": "page_effect", "effect_on": "entire_page", "motion": {"type": "full_frame_displacement_map", "page_deformation": true, "overlay_graphic": false, "visible_ring": false}},
-    {"id": "target-lock", "start": 4.85, "end": 5.55, "asset": "10-片头字幕/target-hero-v001.mp4", "transition_in": "hard_cut", "transition_out": "crossfade", "motion": {"type": "grok_video", "scale_start": 1.0, "scale_end": 1.0, "pan_x": 0, "pan_y": 0}, "title_motion": {"type": "cover_page_title_settle", "settle_frames": 10, "easing": "ease_out_cubic", "start_anchor": "cover_page_upper_center", "end_anchor": "cover_page_top"}}
+    {"id": "target-cover-hold", "start": 5.366667, "end": 6.116667, "asset": "10-片头字幕/v001/target-cover-title-page-v001.png", "transition_in": "hard_cut", "transition_out": "hard_cut", "motion": {"type": "snap_settle", "scale_start": 1.02, "scale_end": 1.0}},
+    {"id": "target-cover-waterwave-page", "start": 5.716667, "end": 6.116667, "wave_trigger_at": 5.716667, "asset": "10-片头字幕/v001/waterwave-page-refraction-v001.mp4", "source_page_asset": "10-片头字幕/v001/target-cover-title-page-v001.png", "includes_title_layer": true, "layer": "page_effect", "effect_on": "entire_page", "motion": {"type": "full_frame_displacement_map", "page_deformation": true, "overlay_graphic": false, "visible_ring": false}},
+    {"id": "target-lock", "start": 6.116667, "end": 6.65, "asset": "10-片头字幕/v001/target-cover-title-page-v001.png", "transition_in": "hard_cut", "transition_out": "hard_cut", "cover_visible_while_title_spoken": true, "motion": {"type": "cover_title_hold", "scale_start": 1.0, "scale_end": 1.0}, "title_motion": {"type": "cover_page_title_settle", "settle_frames": 10, "easing": "ease_out_cubic", "start_anchor": "cover_page_upper_center", "end_anchor": "cover_page_top"}}
   ],
   "sceneTrack": [
     {"id": "scene-01", "start": 5.55, "end": 14.2, "voice_start": 5.55, "voice_end": 13.90, "script_segment_ids": ["viewer-expression-01"], "narration_text": "与第一张图对应的完整口播意群。", "asset": "09-Grok视频/v001/shot-01-final.mp4", "source_still": "08-正文画面/v001/shot-01.png", "emotional_stage": "具体处境", "visual_change_reason": "initial_state", "motion": {"type": "grok_video", "scale_start": 1.0, "scale_end": 1.0, "pan_x": 0, "pan_y": 0}},
     {"id": "scene-02", "start": 13.8, "end": 22.6, "voice_start": 13.90, "voice_end": 22.60, "script_segment_ids": ["pressure-escalation-01"], "narration_text": "与第二张图对应的完整口播意群。", "asset": "08-正文画面/v001/shot-02.png", "source_still": "08-正文画面/v001/shot-02.png", "emotional_stage": "外部压力", "visual_change_reason": "subject_relation_change", "motion": {"type": "zoom_out", "scale_start": 1.12, "scale_end": 1.0, "pan_x_ratio": 0.0, "pan_y_ratio": 0.0, "interpolation": "cubic_ease_in_out", "sample_per_frame": true, "container": {"coverage": "full_canvas", "overflow": "hidden", "fit": "cover", "transform_target": "inner_image"}}}
   ],
   "captionTrack": [
-    {"id": "cap-01", "start": 5.55, "reveal_end": 5.55, "display_mode": "segment", "end": 7.8, "zh": "中文字幕", "en": "English subtitle"}
+    {"id": "cap-opening-01", "start": 0.1, "reveal_end": 0.1, "display_mode": "segment", "end": 2.9, "zh": "片头配音字幕", "en": "Opening narration"},
+    {"id": "cap-body-01", "start": 6.65, "reveal_end": 6.65, "display_mode": "segment", "end": 8.8, "zh": "中文字幕", "en": "English subtitle"}
   ],
   "audioTrack": [
     {"id": "voice-01", "type": "voice", "start": 0.0, "end": 53.7, "asset": "05-配音/voice-v001.wav", "volume": 1.0},
@@ -563,9 +596,9 @@ python3 <skill_root>/scripts/migrate_manifest_v8.py --project <project_dir>
 
 最终 MP4 和过程预览必须实际使用 `assets/fonts/杨任东竹石体-Heavy.ttf` 渲染中文。生成剪映草稿时，把同一字体复制到 `Resources/local_fonts/`，并在草稿报告记录 `font_binding: requires_jianying_local_font_activation`；当前草稿库不支持任意 TTF 自动绑定，不得伪报已完成剪映字体激活。
 
-`opening.template` 只能使用 `masked_book_carousel`。`opening.keyword` 必须与内容包已确认的两字关键词完全一致；审核过的毛笔蒙版要从 `02-情绪提炼/` 复用，后期不得重新选词或重画。遮罩专用源图和源视频必须位于 `08A-片头遮罩素材/`，同源展开片段作为独立素材落盘。遮罩图片与视频不得复用正文路径，也不得与正文文件 SHA-256 相同。`carousel_cards` 必须完整写入 9 项，本示例只展示第一项。`openingTrack` 保留可编辑片头素材，`sceneTrack` 保留动态片段和回退静态图，`captionTrack` 拆成中英文轨，`audioTrack` 拆成配音、BGM 和音效轨。每个 `sceneTrack` 项必须包含 `emotional_stage`、`visual_change_reason`、逐字稿段 ID、口播和实测配音区间，并与同一 `source_still` 的生图记录一致；第一组使用 `initial_state`，后续使用规格中定义的真实换图理由。`duration`、配音轨终点、末场景口播终点和最终视频必须共同等于 `manifest.duration.locked`，误差不超过 0.05 秒。
+`opening.template` 只能使用 `masked_book_carousel`。`opening.keyword` 必须与内容包已确认的两字关键词完全一致；审核过的毛笔蒙版要从 `02-情绪提炼/` 复用，后期不得重新选词或重画。遮罩专用源图和源视频必须位于 `08A-片头遮罩素材/`，同源展开片段作为独立素材落盘。遮罩图片与视频不得复用正文路径，也不得与正文文件 SHA-256 相同。`carousel_cards` 必须完整写入最终计划的 `card_count` 项，本示例只展示第一项；数量、逐卡帧数、`carousel_end` 与真实书名时码必须由同一份 `carousel-plan-vNNN.json` 驱动。`openingTrack` 保留可编辑片头素材，`sceneTrack` 保留动态片段和回退静态图，`captionTrack` 拆成中英文轨，`audioTrack` 拆成配音、BGM 和音效轨。每个 `sceneTrack` 项必须包含 `emotional_stage`、`visual_change_reason`、逐字稿段 ID、口播和实测配音区间，并与同一 `source_still` 的生图记录一致；第一组使用 `initial_state`，后续使用规格中定义的真实换图理由。`duration`、配音轨终点、末场景口播终点和最终视频必须共同等于 `manifest.duration.locked`，误差不超过 0.05 秒。
 
-`target_cover_title_binding.mode` 必须为 `same_page_as_cover`。书名起势、收稳和水波阶段都必须保留同页真实封面；水波源页必须是已含落位书名的 `target_cover_title_page_asset`。
+`target_cover_title_binding.mode` 必须为 `same_page_as_cover`。书名起势、收稳、水波阶段、书名口播和书名后停顿都必须保留同页真实封面；水波源页和 `target-lock` 轨都必须引用 `target_cover_title_page_asset`，`target-lock.end` 必须等于 `body_voice_start`。`captionTrack` 必须从 `hook_start` 开始覆盖遮罩和展开阶段，不能从正文才开始。
 
 直接上轴的静态正文图必须使用 `zoom_in`、`zoom_out`、`pan_left`、`pan_right` 或 `emotional_hold`，并记录全画布隐藏溢出容器。相邻静态镜头不得重复同一种运动，横移不得超过画宽 4%。强转折和记忆碎片使用具名硬切，情绪连续才使用 0.12–0.30 秒 `short_fade`；三个及以上正文转场不得全部使用同一类型。Grok 真动态片段使用 `grok_video`，不得再叠加确定性缩放。
 
@@ -602,7 +635,7 @@ python3 <skill_root>/scripts/migrate_manifest_v8.py --project <project_dir>
 
 ## 验收顺序
 
-1. 先看关卡 1 的遮罩确认图，确认关键词恰好两个汉字；再逐像素检查最终蒙版没有换词或换字形。随后逐帧看 0–6 秒片头，检查 3 帧预闪、毛笔字同源视频填充、横带展开、9 张真实书封卡 `snap_settle`、齿轮结束后的目标书封展示，以及 `cover_waterwave_then_title_drop`：书名必须在目标封面所在的同一页上方用 10–14 帧由大到小收稳，封面全程可见；水滴声与整页形变触发对齐，书名、封面文字、边缘和背景同时低幅位移，峰值后连续恢复，再切主画面并保持书名位置；不得出现可见水珠、下落轨迹、飞溅、椭圆/同心圆轮廓或高光环。
+1. 先看关卡 1 的遮罩确认图，确认关键词恰好两个汉字；再逐像素检查最终蒙版没有换词或换字形。随后逐帧检查完整片头：3 帧预闪、毛笔字同源视频填充、横带展开、按真实书名时码计算数量的书封卡 `snap_settle`、齿轮结束后的目标书封展示，以及 `cover_waterwave_then_title_drop`。书名必须在目标封面所在的同一页上方用 10–14 帧由大到小收稳，封面全程可见；水滴声与整页形变触发对齐，书名、封面文字、边缘和背景同时低幅位移，峰值后连续恢复并保持到正文首字；不得出现可见水珠、下落轨迹、飞溅、椭圆/同心圆轮廓或高光环。
 2. 关闭声音看一遍，检查字幕是否可独立读懂。
 3. 闭眼听一遍，检查配音是否连续、“今天分享的是”与书名有没有 0.45–0.65 秒间隔、书名和正文有没有 0.45–0.70 秒间隔、书名是否低位结实下收、各声音环节是否按声音方案执行、音乐是否压人声。
 4. 在手机尺寸下看一遍，检查顶部书名、中文和英文字幕。

@@ -19,6 +19,17 @@ def result(name: str, state: str, detail: str) -> dict[str, str]:
     return {"name": name, "state": state, "detail": detail}
 
 
+def model_index_complete(index_path: Path) -> bool:
+    if not index_path.is_file():
+        return False
+    try:
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    shards = set(index.get("weight_map", {}).values())
+    return bool(shards) and all((index_path.parent / shard).is_file() for shard in shards)
+
+
 def main() -> int:
     checks: list[dict[str, str]] = []
     checks.append(result("Python", "ok" if sys.version_info >= (3, 9) else "missing", sys.version.split()[0]))
@@ -68,6 +79,19 @@ def main() -> int:
 
     grok = shutil.which("grok")
     checks.append(result("Grok CLI", "ok" if grok else "optional_missing", grok or "只影响可选动态视频"))
+
+    ltx_root_value = os.environ.get("LTX_VIDEO_LOCAL_ROOT", "").strip()
+    if ltx_root_value:
+        ltx_root = Path(ltx_root_value).expanduser().resolve()
+        ltx_ready = (
+            (ltx_root / "run_i2v_hq.sh").is_file()
+            and model_index_complete(ltx_root / "models/LTX-2.3-dev/transformer/model.safetensors.index.json")
+            and model_index_complete(ltx_root / "models/gemma-3-12b-it-4bit/model.safetensors.index.json")
+        )
+        ltx_detail = f"{ltx_root}；文件完整，仍需单镜头 probe" if ltx_ready else f"{ltx_root}；模型或分片不完整"
+        checks.append(result("LTX-2.3 本地视频", "ok" if ltx_ready else "optional_missing", ltx_detail))
+    else:
+        checks.append(result("LTX-2.3 本地视频", "optional_missing", "未设置 LTX_VIDEO_LOCAL_ROOT；不影响 FFmpeg 回退"))
 
     for item in checks:
         icon = {"ok": "OK", "missing": "MISSING", "optional_missing": "OPTIONAL"}[item["state"]]

@@ -48,6 +48,18 @@ BOOK_TITLE_PRE_PAUSE_TARGET = 0.55
 BOOK_TITLE_POST_PAUSE_RANGE = [0.45, 0.70]
 BOOK_TITLE_POST_PAUSE_TARGET = 0.60
 BOOK_TITLE_EMPHASIS = "firm_low_falling"
+DEFAULT_CAROUSEL_TIMING = {
+    "mode": "voice_timing_derived",
+    "fps": 30,
+    "carousel_start_seconds": 2.90,
+    "target_cover_lead_frames": 0,
+    "card_frame_range": [3, 4],
+    "minimum_cards": 6,
+    "estimate_formula": "(hook_han + lead_text_han) / chars_per_second + pre_title_pause",
+    "final_timing_source": "voice_actual",
+    "final_replan_required": True,
+    "insufficient_library_policy": "block_expand_library",
+}
 TIMING_TOLERANCE_SECONDS = 0.05
 ALLOWED_BODY_SHOT_SIZES = {"medium_long", "long"}
 ALLOWED_WARDROBES = {"light_knit", "shirt", "short_jacket", "light_top", "simple_dress"}
@@ -913,6 +925,23 @@ def validate_opening_contract(
             and not find_secret_fields(plan)
         )
     add(checks, "opening_mask_plan", mask_plan_ok, str(mask_plan))
+    mask_captions = opening.get("mask_caption_track", [])
+    mask_caption_ok = (
+        opening.get("mask_narration_captions_present") is True
+        and isinstance(mask_captions, list)
+        and len(mask_captions) >= 2
+        and all(
+            isinstance(item, dict)
+            and bool(str(item.get("text") or "").strip())
+            and as_float(item.get("start")) is not None
+            and as_float(item.get("end")) is not None
+            and float(item["end"]) > float(item["start"])
+            and 0.05 <= float(item["start"]) < 2.90
+            and float(item["end"]) <= 2.90
+            for item in mask_captions
+        )
+    )
+    add(checks, "opening_mask_narration_captions", mask_caption_ok, str(mask_captions))
     body_images = [path for path in (project / "08-正文画面").rglob("*") if path.suffix.lower() in image_suffixes]
     body_videos = [path for path in (project / "09-Grok视频").rglob("*") if path.suffix.lower() in video_suffixes]
     mask_content_ok = (
@@ -929,13 +958,49 @@ def validate_opening_contract(
     add(checks, "expand_start", in_range(opening.get("expand_start"), 1.30, 1.45), str(opening.get("expand_start")))
     add(checks, "expand_end", in_range(opening.get("expand_end"), 2.80, 3.00), str(opening.get("expand_end")))
     add(checks, "carousel_start", in_range(opening.get("carousel_start"), 2.80, 3.00), str(opening.get("carousel_start")))
-    add(checks, "carousel_end", in_range(opening.get("carousel_end"), 4.00, 4.20), str(opening.get("carousel_end")))
-
     durations = opening.get("card_durations", [])
     duration_values = [as_float(value) for value in durations] if isinstance(durations, list) else []
+    carousel_plan: dict[str, Any] = {}
+    opening_cards = opening.get("carousel_cards", [])
+    expected_card_count = int(
+        opening.get("carousel_count")
+        or len(duration_values)
+        or (len(opening_cards) if isinstance(opening_cards, list) else 0)
+    )
+    plan_path: Path | None = None
+    if content_contract_version >= 4:
+        plan_value = str(opening.get("carousel_plan_asset") or "")
+        plan_path = project / plan_value
+        if plan_path.is_file():
+            carousel_plan = read_json(plan_path)
+        expected_card_count = int(carousel_plan.get("card_count") or 0)
+        plan_ok = (
+            bool(plan_value)
+            and plan_path.is_file()
+            and carousel_plan.get("mode") == "voice_timing_derived"
+            and carousel_plan.get("timing_source_type") == "voice_actual"
+            and carousel_plan.get("needs_actual_timing_replan") is False
+            and int(carousel_plan.get("fps") or 0) == 30
+            and int(carousel_plan.get("target_cover_lead_frames") or 0) == 0
+            and carousel_plan.get("card_frame_range") == [3, 4]
+            and expected_card_count >= 6
+        )
+        add(checks, "dynamic_carousel_plan", plan_ok, str(plan_path) if plan_value else "缺失")
+        add(
+            checks,
+            "dynamic_carousel_count",
+            int(opening.get("carousel_count") or 0) == expected_card_count,
+            f"opening={opening.get('carousel_count')} / plan={expected_card_count}",
+        )
     durations_ok = (
-        len(duration_values) == 9
-        and all(value is not None and 0.10 <= value <= 0.15 for value in duration_values)
+        len(duration_values) == expected_card_count
+        and expected_card_count > 0
+        and all(
+            value is not None
+            and round(value * 30) in {3, 4}
+            and abs(value - round(value * 30) / 30) <= 0.001
+            for value in duration_values
+        )
     )
     add(checks, "card_durations", durations_ok, str(durations))
     carousel_start = as_float(opening.get("carousel_start"))
@@ -958,7 +1023,7 @@ def validate_opening_contract(
     add(checks, "carousel_snap_settle", carousel_motion_ok, str(carousel_motion))
 
     cards = opening.get("carousel_cards", [])
-    cards_ok = isinstance(cards, list) and len(cards) == 9
+    cards_ok = isinstance(cards, list) and len(cards) == expected_card_count
     target = normalized_book_title(target_title)
     invalid_cards: list[str] = []
     if cards_ok:
@@ -971,6 +1036,33 @@ def validate_opening_contract(
             if card.get("role") != "carousel" or not title or title == target or not asset.is_file():
                 invalid_cards.append(f"#{index}:{title or 'missing'}")
     add(checks, "carousel_cards", cards_ok and not invalid_cards, f"违规 {invalid_cards}" if invalid_cards else f"{len(cards) if isinstance(cards, list) else 0} 张非目标真实书封卡")
+
+    if content_contract_version >= 4:
+        plan_frames = carousel_plan.get("card_frames", [])
+        plan_durations = carousel_plan.get("card_durations", [])
+        title_start_seconds = as_float(carousel_plan.get("title_start_seconds"))
+        delivery_title_start = as_float(opening.get("book_title_delivery", {}).get("title_start_seconds"))
+        target_cover_lead = None if title_start_seconds is None or carousel_end is None else title_start_seconds - carousel_end
+        carousel_plan_timing_ok = (
+            carousel_start is not None
+            and carousel_end is not None
+            and as_float(carousel_plan.get("carousel_start")) is not None
+            and as_float(carousel_plan.get("carousel_end")) is not None
+            and abs(carousel_start - float(carousel_plan["carousel_start"])) <= (1 / 30 + 0.001)
+            and abs(carousel_end - float(carousel_plan["carousel_end"])) <= (1 / 30 + 0.001)
+            and plan_frames == [round(value * 30) for value in duration_values]
+            and len(plan_durations) == expected_card_count
+            and target_cover_lead is not None
+            and abs(target_cover_lead) <= (1 / 30 + 0.001)
+            and delivery_title_start is not None
+            and abs(delivery_title_start - title_start_seconds) <= (1 / 30 + 0.001)
+        )
+        add(
+            checks,
+            "carousel_lands_on_title",
+            carousel_plan_timing_ok,
+            f"书名 {title_start_seconds}s / 目标封面 {carousel_end}s / 提前 {target_cover_lead}s",
+        )
 
     cover_hold_start = as_float(opening.get("target_cover_hold_start"))
     cover_hold_end = as_float(opening.get("target_cover_hold_end"))
@@ -985,10 +1077,40 @@ def validate_opening_contract(
     target_cover_base_asset = project / str(opening.get("target_cover_base_asset", ""))
     target_cover_title_page_asset = project / str(opening.get("target_cover_title_page_asset", ""))
     title_binding = opening.get("target_cover_title_binding", {})
-    add(checks, "target_lock_start", in_range(opening.get("target_lock_start"), 4.75, 4.95), str(opening.get("target_lock_start")))
+    if content_contract_version >= 4:
+        dynamic_lock_start = as_float(opening.get("target_lock_start"))
+        add(
+            checks,
+            "target_lock_start",
+            dynamic_lock_start is not None
+            and cover_hold_end is not None
+            and abs(dynamic_lock_start - cover_hold_end) <= (1 / 30 + 0.001),
+            str(opening.get("target_lock_start")),
+        )
+    else:
+        add(checks, "target_lock_start", in_range(opening.get("target_lock_start"), 4.75, 4.95), str(opening.get("target_lock_start")))
     add(checks, "target_lock_mode", opening.get("target_lock_mode") == "cover_waterwave_then_title_drop", str(opening.get("target_lock_mode")))
     target_hero = opening.get("target_hero_asset")
     add(checks, "target_hero_asset", bool(target_hero) and (project / str(target_hero)).is_file(), str(target_hero))
+    target_lock_hold_asset = project / str(opening.get("target_lock_hold_asset", ""))
+    title_voice_start = as_float(opening.get("book_title_voice_start"))
+    title_voice_end = as_float(opening.get("book_title_voice_end"))
+    target_lock_end_value = as_float(opening.get("target_lock_end"))
+    body_voice_start_value = as_float(opening.get("body_voice_start"))
+    cover_persistence_ok = (
+        opening.get("cover_persists_until_body") is True
+        and target_lock_hold_asset.is_file()
+        and target_lock_hold_asset.resolve() == target_cover_title_page_asset.resolve()
+        and title_voice_start is not None
+        and title_voice_end is not None
+        and cover_hold_start is not None
+        and cover_hold_start <= title_voice_start < title_voice_end
+        and target_lock_end_value is not None
+        and body_voice_start_value is not None
+        and title_voice_end <= target_lock_end_value
+        and abs(target_lock_end_value - body_voice_start_value) <= TIMING_TOLERANCE_SECONDS
+    )
+    add(checks, "target_cover_persists_through_title", cover_persistence_ok, str(opening.get("target_lock_hold_asset")))
     title_motion = opening.get("title_motion", {})
     title_motion_ok = (
         title_motion.get("type") == "cover_page_title_settle"
@@ -1003,8 +1125,10 @@ def validate_opening_contract(
     wave_trigger_at = as_float(water_effect.get("wave_trigger_at"))
     water_sfx_at = as_float(water_effect.get("sfx_at"))
     visual_end = as_float(water_effect.get("visual_end"))
-    hero_cut_at = as_float(water_effect.get("hero_cut_at"))
+    cover_release_at = as_float(water_effect.get("cover_release_at"))
     target_lock_start = as_float(opening.get("target_lock_start"))
+    target_lock_end_for_water = as_float(opening.get("target_lock_end"))
+    body_voice_start_for_water = as_float(opening.get("body_voice_start"))
     water_effect_asset = project / str(water_effect.get("effect_asset", ""))
     title_keyframes = water_effect.get("title_keyframes", [])
     expected_frames = [0, 1, 2]
@@ -1041,6 +1165,7 @@ def validate_opening_contract(
         and title_binding.get("title_above_cover") is True
         and title_binding.get("cover_visible_during_title_motion") is True
         and title_binding.get("visible_through_waterwave") is True
+        and title_binding.get("cover_visible_while_title_spoken") is True
         and title_binding.get("persist_to_body") is True
         and title_start is not None
         and cover_hold_start is not None
@@ -1057,16 +1182,19 @@ def validate_opening_contract(
         and wave_trigger_at is not None
         and water_sfx_at is not None
         and visual_end is not None
-        and hero_cut_at is not None
+        and cover_release_at is not None
         and target_lock_start is not None
+        and target_lock_end_for_water is not None
+        and body_voice_start_for_water is not None
         and cover_hold_start is not None
         and cover_hold_end is not None
         and cover_hold_start <= visual_start <= wave_trigger_at < visual_end <= cover_hold_end + 0.001
         and abs(visual_start - wave_trigger_at) <= (1 / 30 + 0.001)
         and abs(water_sfx_at - wave_trigger_at) <= (1 / 30 + 0.001)
-        and 0.30 <= hero_cut_at - wave_trigger_at <= 0.50
-        and abs(visual_end - hero_cut_at) <= (1 / 30 + 0.001)
-        and abs(hero_cut_at - target_lock_start) <= (1 / 30 + 0.001)
+        and 0.30 <= visual_end - wave_trigger_at <= 0.50
+        and abs(visual_end - target_lock_start) <= (1 / 30 + 0.001)
+        and abs(cover_release_at - target_lock_end_for_water) <= TIMING_TOLERANCE_SECONDS
+        and abs(cover_release_at - body_voice_start_for_water) <= TIMING_TOLERANCE_SECONDS
     )
     waterdrop_lock_ok = (
         water_effect.get("type") == "cover_waterwave_then_title_drop"
@@ -1089,9 +1217,22 @@ def validate_opening_contract(
     )
     add(checks, "waterwave_full_page_sequence", waterdrop_lock_ok, str(water_effect))
     add(checks, "waterwave_page_asset", water_effect_asset.is_file(), str(water_effect_asset))
-    add(checks, "waterwave_sound_on_cover", water_timing_ok, f"effect/trigger/sfx={visual_start}/{wave_trigger_at}/{water_sfx_at}, hero={hero_cut_at}")
-    add(checks, "target_lock_end", in_range(opening.get("target_lock_end"), 5.30, 5.85), str(opening.get("target_lock_end")))
-    add(checks, "body_voice_start", in_range(opening.get("body_voice_start"), 5.30, 5.85), str(opening.get("body_voice_start")))
+    add(checks, "waterwave_sound_on_cover", water_timing_ok, f"effect/trigger/sfx={visual_start}/{wave_trigger_at}/{water_sfx_at}, cover_release={cover_release_at}")
+    if content_contract_version >= 4:
+        delivery = opening.get("book_title_delivery", {})
+        delivery_body_start = as_float(delivery.get("body_start_seconds"))
+        dynamic_body_ok = (
+            target_lock_end_value is not None
+            and body_voice_start_value is not None
+            and delivery_body_start is not None
+            and abs(target_lock_end_value - body_voice_start_value) <= TIMING_TOLERANCE_SECONDS
+            and abs(body_voice_start_value - delivery_body_start) <= TIMING_TOLERANCE_SECONDS
+        )
+        add(checks, "target_lock_end", dynamic_body_ok, str(opening.get("target_lock_end")))
+        add(checks, "body_voice_start", dynamic_body_ok, str(opening.get("body_voice_start")))
+    else:
+        add(checks, "target_lock_end", in_range(opening.get("target_lock_end"), 5.30, 5.85), str(opening.get("target_lock_end")))
+        add(checks, "body_voice_start", in_range(opening.get("body_voice_start"), 5.30, 5.85), str(opening.get("body_voice_start")))
 
 
 def main() -> int:
@@ -1141,15 +1282,32 @@ def main() -> int:
         add(checks, "manifest_image_provider", image_policy_ok, f"{provider} / {selection_mode} / {override_reason}")
     video_generation = defaults.get("video_generation")
     if isinstance(video_generation, dict):
-        video_policy_ok = (
-            video_generation.get("provider") == DEFAULT_VIDEO_PROVIDER
-            and video_generation.get("bridge") == "grok-local"
-            and video_generation.get("model") == "grok-imagine-video-via-cli"
-            and video_generation.get("mode") == "reference_to_video"
-            and video_generation.get("auth_mode") == "membership_oauth_only"
-            and video_generation.get("motion_profile") == "restrained_micro_motion"
-            and video_generation.get("selection_mode") == "default"
-        )
+        video_provider = video_generation.get("provider")
+        common_video_policy_ok = video_generation.get("motion_profile") == "restrained_micro_motion"
+        if video_provider == DEFAULT_VIDEO_PROVIDER:
+            video_policy_ok = (
+                common_video_policy_ok
+                and video_generation.get("bridge") == "grok-local"
+                and video_generation.get("model") == "grok-imagine-video-via-cli"
+                and video_generation.get("mode") == "reference_to_video"
+                and video_generation.get("auth_mode") == "membership_oauth_only"
+                and video_generation.get("selection_mode") == "default"
+            )
+        elif video_provider == "ltx_local":
+            video_policy_ok = (
+                common_video_policy_ok
+                and video_generation.get("model") == "prince-canuma/LTX-2.3-dev"
+                and video_generation.get("text_encoder") == "mlx-community/gemma-3-12b-it-4bit"
+                and video_generation.get("pipeline") == "dev-two-stage-hq"
+                and video_generation.get("probe_status") == "approved"
+                and video_generation.get("selection_mode") == "user_override"
+            )
+        else:
+            video_policy_ok = (
+                video_provider == "ffmpeg_fallback"
+                and common_video_policy_ok
+                and video_generation.get("selection_mode") == "fallback"
+            )
         add(checks, "manifest_video_provider", video_policy_ok, str(video_generation))
     typography = defaults.get("typography")
     if isinstance(typography, dict):
@@ -1214,6 +1372,14 @@ def main() -> int:
                 and book_delivery_policy.get("fallback") == "pause_only_postprocess"
             )
             add(checks, "manifest_book_title_pause_policy", book_pause_policy_ok, str(book_delivery_policy))
+        if content_contract_version >= 4:
+            carousel_policy = content_policy.get("carousel_timing", {})
+            add(
+                checks,
+                "manifest_dynamic_carousel_policy",
+                carousel_policy == DEFAULT_CAROUSEL_TIMING,
+                str(carousel_policy),
+            )
     music_policy = defaults.get("music")
     if isinstance(music_policy, dict):
         add(
@@ -2136,7 +2302,6 @@ def main() -> int:
         )
     if opening_record:
         required_opening_artifacts = {
-            str(opening_record.get("mask_source_image_asset", "")),
             str(opening_record.get("mask_source_video_asset", "")),
             str(opening_record.get("mask_source_plan_asset", "")),
             str(opening_record.get("masked_keyword_video_asset", "")),
@@ -2242,15 +2407,26 @@ def main() -> int:
         add(checks, "opening_track", opening_assets_ok, f"{len(opening_assets)} 个可编辑片头素材")
         opening_ids = {str(item.get("id", "")) for item in opening_assets}
         carousel_track_items = [item for item in opening_assets if str(item.get("id", "")).startswith("carousel-")]
-        opening_structure_ok = {"target-flash", "masked-keyword", "target-cover-hold", "target-cover-waterwave-page", "target-lock"}.issubset(opening_ids) and len(carousel_track_items) == 9
+        expected_carousel_track_count = (
+            int(opening.get("carousel_count") or len(opening.get("carousel_cards", [])))
+            if content_contract_version >= 4
+            else 9
+        )
+        opening_structure_ok = {"target-flash", "masked-keyword", "target-cover-hold", "target-cover-waterwave-page", "target-lock"}.issubset(opening_ids) and len(carousel_track_items) == expected_carousel_track_count
         add(checks, "opening_track_structure", opening_structure_ok, f"{len(carousel_track_items)} 张轮播卡 / IDs {sorted(opening_ids)}")
         target_lock_items = [item for item in opening_assets if item.get("id") == "target-lock"]
         waterdrop_effect_items = [item for item in opening_assets if item.get("id") == "target-cover-waterwave-page"]
         masked_keyword_items = [item for item in opening_assets if item.get("id") == "masked-keyword"]
         video_suffixes = {".mp4", ".mov", ".m4v", ".webm"}
-        target_hero_lock_ok = len(target_lock_items) == 1 and Path(str(target_lock_items[0].get("asset", ""))).suffix.lower() in {".jpg", ".jpeg", ".png", ".webp", ".mp4", ".mov", ".m4v", ".webm"}
+        target_cover_title_page = str(opening.get("target_cover_title_page_asset") or "")
+        target_hero_lock_ok = (
+            len(target_lock_items) == 1
+            and str(target_lock_items[0].get("asset") or "") == target_cover_title_page
+            and target_lock_items[0].get("cover_visible_while_title_spoken") is True
+            and abs(float(target_lock_items[0].get("end", -9)) - float(opening.get("body_voice_start", 9))) <= TIMING_TOLERANCE_SECONDS
+        )
         masked_keyword_video_ok = len(masked_keyword_items) == 1 and Path(str(masked_keyword_items[0].get("asset", ""))).suffix.lower() in video_suffixes
-        add(checks, "target_hero_lock_asset", target_hero_lock_ok, str(target_lock_items[0].get("asset")) if target_lock_items else "缺失")
+        add(checks, "target_cover_lock_asset", target_hero_lock_ok, str(target_lock_items[0].get("asset")) if target_lock_items else "缺失")
         add(checks, "masked_keyword_video", masked_keyword_video_ok, str(masked_keyword_items[0].get("asset")) if masked_keyword_items else "缺失")
         opening_water = opening.get("waterdrop_lock_response", {})
         waterdrop_track_ok = (
@@ -2366,7 +2542,7 @@ def main() -> int:
         )
 
         deterministic_motion = {"zoom_in", "zoom_out", "pan_left", "pan_right", "emotional_hold"}
-        allowed_motion = deterministic_motion | {"grok_video"}
+        allowed_motion = deterministic_motion | {"grok_video", "ltx_video"}
         invalid_motion = []
         repeated_motion = []
         previous_deterministic: str | None = None
@@ -2400,7 +2576,7 @@ def main() -> int:
                 previous_deterministic = str(motion_type)
             else:
                 previous_deterministic = None
-            if motion_type == "grok_video":
+            if motion_type in {"grok_video", "ltx_video"}:
                 grok_scene_count += 1
             type_values_ok = (
                 (
@@ -2447,7 +2623,7 @@ def main() -> int:
                     and common_static_ok
                 )
                 or (
-                    motion_type == "grok_video"
+                    motion_type in {"grok_video", "ltx_video"}
                     and scale_delta == 0
                     and abs(pan_x_ratio) <= 0.0001
                     and abs(pan_y_ratio) <= 0.0001
@@ -2486,6 +2662,36 @@ def main() -> int:
         add(checks, "no_static_body_scene", deterministic_count + grok_scene_count == len(scenes), f"{len(scenes)} 个镜头全部有运动")
 
         subtitles = timeline.get("captionTrack", [])
+        hook_start = as_float(opening.get("hook_start"))
+        expand_end = as_float(opening.get("expand_end"))
+        opening_caption_intervals = sorted(
+            (
+                float(item["start"]),
+                float(item["end"]),
+            )
+            for item in subtitles
+            if as_float(item.get("start")) is not None
+            and as_float(item.get("end")) is not None
+            and hook_start is not None
+            and expand_end is not None
+            and float(item["end"]) > hook_start
+            and float(item["start"]) < expand_end
+        )
+        opening_caption_coverage_ok = bool(opening_caption_intervals)
+        coverage_cursor = hook_start
+        if opening_caption_coverage_ok and coverage_cursor is not None and expand_end is not None:
+            for interval_start, interval_end in opening_caption_intervals:
+                if interval_start > coverage_cursor + TIMING_TOLERANCE_SECONDS:
+                    opening_caption_coverage_ok = False
+                    break
+                coverage_cursor = max(coverage_cursor, interval_end)
+            opening_caption_coverage_ok = opening_caption_coverage_ok and coverage_cursor >= expand_end - TIMING_TOLERANCE_SECONDS
+        add(
+            checks,
+            "opening_caption_coverage",
+            opening_caption_coverage_ok,
+            f"{hook_start}–{expand_end}s / {opening_caption_intervals}",
+        )
         invalid = [(s.get("id"), han_count(s.get("zh", ""))) for s in subtitles if not 1 <= han_count(s.get("zh", "")) <= 16]
         add(checks, "subtitle_length", not invalid, f"超限 {invalid}" if invalid else f"{len(subtitles)} 张字幕")
         progressive = [s.get("id") for s in subtitles if abs(float(s.get("reveal_end", s.get("start", 0))) - float(s.get("start", 0))) > 0.001 or s.get("display_mode", "segment") != "segment"]

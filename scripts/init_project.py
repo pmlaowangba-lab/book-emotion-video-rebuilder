@@ -67,6 +67,15 @@ DEFAULT_VIDEO_GENERATION = {
     "auth_mode": "membership_oauth_only",
     "motion_profile": "restrained_micro_motion",
     "selection_mode": "default",
+    "allowed_providers": ["grok_cli", "ltx_local", "ffmpeg_fallback"],
+    "optional_local_provider": {
+        "provider": "ltx_local",
+        "root_env": "LTX_VIDEO_LOCAL_ROOT",
+        "model": "prince-canuma/LTX-2.3-dev",
+        "text_encoder": "mlx-community/gemma-3-12b-it-4bit",
+        "pipeline": "dev-two-stage-hq",
+        "requires_probe_status": "approved",
+    },
 }
 DEFAULT_TYPOGRAPHY = {
     "chinese_font_id": "yrdzst-heavy",
@@ -74,7 +83,7 @@ DEFAULT_TYPOGRAPHY = {
     "english_font_family": "Georgia",
 }
 DEFAULT_CONTENT = {
-    "contract_version": 3,
+    "contract_version": 4,
     "entry_mode": "direct_theme",
     "max_script_seconds": 60.0,
     "preferred_han_count": [245, 268],
@@ -108,6 +117,18 @@ DEFAULT_CONTENT = {
         "title_emphasis": "firm_low_falling",
         "timing_evidence_required": True,
         "fallback": "pause_only_postprocess",
+    },
+    "carousel_timing": {
+        "mode": "voice_timing_derived",
+        "fps": 30,
+        "carousel_start_seconds": 2.90,
+        "target_cover_lead_frames": 0,
+        "card_frame_range": [3, 4],
+        "minimum_cards": 6,
+        "estimate_formula": "(hook_han + lead_text_han) / chars_per_second + pre_title_pause",
+        "final_timing_source": "voice_actual",
+        "final_replan_required": True,
+        "insufficient_library_policy": "block_expand_library",
     },
     "forbidden_confirmation_openings": [
         "你是不是也这样",
