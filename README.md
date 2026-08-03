@@ -67,7 +67,18 @@ $book-emotion-video-rebuilder 讲一本书《自控力》
 
 ### 本地模型说明
 
-当前版本 **没有必须下载的本地 AI 模型或模型权重**。
+核心流程 **没有必须下载的本地 AI 模型**：没有本地视频模型时，正文画面会使用 FFmpeg 连续微动完成，仍可正常合成成片。
+
+线程 `019fc1d8-9763-7c40-b98c-60a563547e37` 另外部署了一套可选的本地图生视频能力：
+
+- 模型：`prince-canuma/LTX-2.3-dev`
+- 文本编码器：`mlx-community/gemma-3-12b-it-4bit`
+- 推理器：[Blaizzy/mlx-video](https://github.com/Blaizzy/mlx-video)，Apple Silicon 使用 MLX
+- 管线：`dev-two-stage-hq`
+- 用途：把不含文字的正文静图转为约 4 秒的克制轻动态镜头
+- 回退：模型缺失、生成失败或人物变形时，继续使用 FFmpeg 动态图片
+
+模型权重合计约 61GB，不会提交到 Git。建议新电脑至少预留 80GB 可用空间。完整的安装、调用约束和当前验证状态见 [本地 LTX-2.3 图生视频说明](docs/local-ltx-video.md)。
 
 - 配音已从 VoxCPM2 本地模型切换为火山引擎 TTS，默认音色 `S_Bkoh3uBT1`。
 - 生图默认通过 Codex App 云端能力完成。

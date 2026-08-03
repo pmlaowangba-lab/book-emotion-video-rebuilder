@@ -14,3 +14,12 @@ assets/bgm-library/*.flac
 assets/bgm-library/*.m4a
 dist/
 build/
+
+# 本地 AI 模型及 Hugging Face 缓存不进入仓库
+models/
+**/.cache/huggingface/
+*.safetensors
+*.gguf
+*.ckpt
+*.pth
+*.pt
