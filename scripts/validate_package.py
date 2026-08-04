@@ -9,11 +9,26 @@ import json
 import re
 import statistics
 import subprocess
+import wave
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from PIL import Image
+
+
+def audio_has_repeated_halves(path: Path) -> bool:
+    """Return true when a PCM WAV is made from two byte-identical passes."""
+    try:
+        with wave.open(str(path), "rb") as audio:
+            frame_count = audio.getnframes()
+            if frame_count < 2 or frame_count % 2:
+                return False
+            payload = audio.readframes(frame_count)
+            midpoint = len(payload) // 2
+            return payload[:midpoint] == payload[midpoint:]
+    except (wave.Error, OSError):
+        return False
 
 
 DEFAULT_VOICE_SPEAKER = "S_Bkoh3uBT1"
@@ -1098,6 +1113,19 @@ def validate_opening_contract(
     title_voice_end = as_float(opening.get("book_title_voice_end"))
     target_lock_end_value = as_float(opening.get("target_lock_end"))
     body_voice_start_value = as_float(opening.get("body_voice_start"))
+    hero_cut_at = as_float(opening.get("hero_cut_at"))
+    if hero_cut_at is None:
+        hero_cut_at = as_float(opening.get("waterdrop_lock_response", {}).get("hero_cut_at"))
+    no_early_hero_cut = (
+        body_voice_start_value is not None
+        and (hero_cut_at is None or hero_cut_at >= body_voice_start_value - (1 / 30 + 0.001))
+    )
+    add(
+        checks,
+        "no_hero_cut_before_body",
+        no_early_hero_cut,
+        f"hero_cut_at={hero_cut_at}, body_voice_start={body_voice_start_value}",
+    )
     cover_persistence_ok = (
         opening.get("cover_persists_until_body") is True
         and target_lock_hold_asset.is_file()
@@ -1991,10 +2019,17 @@ def main() -> int:
     music_source_path = newest(project / "06-配乐音效", "music-source-v*.md")
     music_cue_path = newest(project / "06-配乐音效", "music-cue-v*.json")
     mix_preview_path = newest(project / "06-配乐音效", "audio-mix-preview-v*.wav")
+    carousel_sfx_path = newest(project / "06-配乐音效", "sfx-carousel-v*.wav")
     add(checks, "bgm_file", bgm_path is not None, str(bgm_path) if bgm_path else "未找到")
     add(checks, "music_source", music_source_path is not None, str(music_source_path) if music_source_path else "未找到")
     add(checks, "music_cue", music_cue_path is not None, str(music_cue_path) if music_cue_path else "未找到")
     add(checks, "audio_mix_preview", mix_preview_path is not None, str(mix_preview_path) if mix_preview_path else "未找到")
+    add(
+        checks,
+        "carousel_sfx_single_pass",
+        carousel_sfx_path is not None and not audio_has_repeated_halves(carousel_sfx_path),
+        str(carousel_sfx_path) if carousel_sfx_path else "未找到",
+    )
     if music_cue_path:
         cue = read_json(music_cue_path)
         cue_music = cue.get("music", {})

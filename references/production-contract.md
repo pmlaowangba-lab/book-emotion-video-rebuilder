@@ -598,7 +598,7 @@ python3 <skill_root>/scripts/migrate_manifest_v8.py --project <project_dir>
 
 `opening.template` 只能使用 `masked_book_carousel`。`opening.keyword` 必须与内容包已确认的两字关键词完全一致；审核过的毛笔蒙版要从 `02-情绪提炼/` 复用，后期不得重新选词或重画。遮罩专用源图和源视频必须位于 `08A-片头遮罩素材/`，同源展开片段作为独立素材落盘。遮罩图片与视频不得复用正文路径，也不得与正文文件 SHA-256 相同。`carousel_cards` 必须完整写入最终计划的 `card_count` 项，本示例只展示第一项；数量、逐卡帧数、`carousel_end` 与真实书名时码必须由同一份 `carousel-plan-vNNN.json` 驱动。`openingTrack` 保留可编辑片头素材，`sceneTrack` 保留动态片段和回退静态图，`captionTrack` 拆成中英文轨，`audioTrack` 拆成配音、BGM 和音效轨。每个 `sceneTrack` 项必须包含 `emotional_stage`、`visual_change_reason`、逐字稿段 ID、口播和实测配音区间，并与同一 `source_still` 的生图记录一致；第一组使用 `initial_state`，后续使用规格中定义的真实换图理由。`duration`、配音轨终点、末场景口播终点和最终视频必须共同等于 `manifest.duration.locked`，误差不超过 0.05 秒。
 
-`target_cover_title_binding.mode` 必须为 `same_page_as_cover`。书名起势、收稳、水波阶段、书名口播和书名后停顿都必须保留同页真实封面；水波源页和 `target-lock` 轨都必须引用 `target_cover_title_page_asset`，`target-lock.end` 必须等于 `body_voice_start`。`captionTrack` 必须从 `hook_start` 开始覆盖遮罩和展开阶段，不能从正文才开始。
+`target_cover_title_binding.mode` 必须为 `same_page_as_cover`。书名起势、收稳、水波阶段、书名口播和书名后停顿都必须保留同页真实封面；水波源页和 `target-lock` 轨都必须引用 `target_cover_title_page_asset`，`target-lock.end` 必须等于 `body_voice_start`。`hero_cut_at` 不得早于 `body_voice_start`，否则必须中止渲染，不得用“封面保持”布尔字段冒充真实画面验收。`captionTrack` 必须从 `hook_start` 开始覆盖遮罩和展开阶段，不能从正文才开始。
 
 直接上轴的静态正文图必须使用 `zoom_in`、`zoom_out`、`pan_left`、`pan_right` 或 `emotional_hold`，并记录全画布隐藏溢出容器。相邻静态镜头不得重复同一种运动，横移不得超过画宽 4%。强转折和记忆碎片使用具名硬切，情绪连续才使用 0.12–0.30 秒 `short_fade`；三个及以上正文转场不得全部使用同一类型。Grok 真动态片段使用 `grok_video`，不得再叠加确定性缩放。
 

@@ -188,9 +188,9 @@ python3 <skill_root>/scripts/build_target_cover_title_page.py \
 - “今天分享的是”横跨遮罩展开末段和轮播段完成，具体起止服从真实字级时码。
 - 引导句末到目标书名首字必须留 0.45–0.65 秒实测停顿。目标书名使用低位、结实、下收的重音，并与目标封面同页书名的出现同步。
 - 书名末字到正文首字必须再留 0.45–0.70 秒实测停顿。正文第一句严格从真实 `body_start_seconds` 进入，不按固定秒数提前 J-cut。
-- 轮播结构音固定使用剪映原声 `assets/sfx-library/jianying-carousel-clockwork-v001.mp3`（“闹钟上发条旋钮转动齿轮”）。从轮播开始连续播放；跳过文件开头约 83ms 静音，在动态 `carousel_end` 裁切并做 20–40ms 淡出，不变速、不拆成逐卡点击，也不为每张卡重复触发完整音效。
+- 轮播结构音固定使用剪映原声 `assets/sfx-library/jianying-carousel-clockwork-v001.mp3`（“闹钟上发条旋钮转动齿轮”）。从轮播开始只触发一次；跳过文件开头约 83ms 静音，原声短于轮播时自然结束并保留后段静音，原声长于轮播时才在动态 `carousel_end` 裁切并做 20–40ms 淡出。不变速、不循环、不复制第二遍、不拆成逐卡点击，也不为每张卡重复触发完整音效。
 - 目标书锁定固定使用剪映原声 `assets/sfx-library/jianying-book-lock-waterdrop-v001.mp3`（“一滴水滴声”）。从封面水波的 `wave_trigger_at` 播放一次，保留自然尾韵。禁止使用旧的参考视频分离音、合成正弦水滴、金属叮声或普通低促音替换。
-- 画面固定使用 `waterdrop_lock_response.type=cover_waterwave_then_title_drop`。`sfx_at` 与 `wave_trigger_at`、`visual_end` 与整页水波结束的误差分别不得超过 1 帧。`target_lock_hold_asset` 必须与目标书封同页，`target_lock_end` 必须等于 `body_voice_start`；书名朗读期间不得出现下一镜头。
+- 画面固定使用 `waterdrop_lock_response.type=cover_waterwave_then_title_drop`。`sfx_at` 与 `wave_trigger_at`、`visual_end` 与整页水波结束的误差分别不得超过 1 帧。`target_lock_hold_asset` 必须与目标书封同页，`target_lock_end` 必须等于 `body_voice_start`；书名朗读期间不得出现下一镜头。时间轴或水波元数据含 `hero_cut_at` 时，它必须大于等于 `body_voice_start`；任何提前值都是硬失败。
 
 ## 时间轴字段
 

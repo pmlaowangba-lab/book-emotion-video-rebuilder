@@ -30,6 +30,9 @@ def resolve_asset(record_path: Path, value: str) -> Path:
     asset = Path(value).expanduser()
     if asset.is_absolute():
         return asset
+    project_relative = (record_path.parents[2] / asset).resolve()
+    if project_relative.is_file():
+        return project_relative
     return (record_path.parent / asset).resolve()
 
 

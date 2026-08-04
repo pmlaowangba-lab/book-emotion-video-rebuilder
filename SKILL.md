@@ -64,7 +64,7 @@ description: 从一本真实书籍出发，用陌言样例的情绪文案结构�
 - 每个正文轻动态片段的最终时长必须由绑定口播的实际配音区间决定，不按 Grok 原始 6 秒或 10 秒直接上轴。时间轴总时长、配音轨终点和最终 MP4 时长必须与 `manifest.duration.locked` 一致，允许误差不超过 0.05 秒。
 - 新项目片头遮罩背景固定使用 `assets/opening-mask-video-library/manifest.json` 的默认视频 `seagulls-over-sea-close-v001`：海面和天空同时可见，白色飞鸟近景向上飞。将视频确定性复制为 `08A-片头遮罩素材/vNNN/mask-source-vNNN.mp4`，再生成 `opening-mask-plan-vNNN.json` 和 `10-片头字幕/masked-keyword-expand-vNNN.mp4`。禁止静态遮罩源图，禁止为此环节调用生图、Grok 图生视频或正文素材回退。
 - 遮罩与横带展开阶段也必须显示当前配音意群的底部中英字幕；字幕从意群起点整段出现并覆盖 `hook_start` 到 `expand_end`，不得等正文第一帧才开始，也不得用顶部情绪句冒充配音字幕。
-- 旁白念到目标书名时必须保持“书名＋真实封面”同页。水波恢复后继续停留在已落位书名的封面页，直到书名念完、书名后停顿结束并到达 `body_voice_start`；这段禁止切换目标主画面、正文第一帧或其他图片。`target-lock` 轨必须引用 `target_cover_title_page_asset`，结束点必须等于 `body_voice_start`。
+- 旁白念到目标书名时必须保持“书名＋真实封面”同页。水波恢复后继续停留在已落位书名的封面页，直到书名念完、书名后停顿结束并到达 `body_voice_start`；这段禁止切换目标主画面、正文第一帧或其他图片。`target-lock` 轨必须引用 `target_cover_title_page_asset`，结束点必须等于 `body_voice_start`。禁止在 `body_voice_start` 之前写入 `hero_cut_at`；历史数据存在该字段时只能删除，或设为不早于 `body_voice_start`。
 - Grok 只允许通过已安装的 `grok-local` 使用 `membership_oauth_only`；禁止直接读取 `~/.grok/auth.json`，禁止静默切换 API Key，禁止自动充值或产生额外按量费用，禁止把 OAuth token 写入项目、Skill 或日志。火山引擎 TTS 认证信息从 `assets/volcengine.env` 读取，不写入 Skill 正文或项目 JSON。
 - BGM 只能从用户提供的 `assets/bgm-library/library.json` 选择，候选和中选条目都必须满足 `source_scope: user_provided_local_file`、状态可用且本地文件真实存在。禁止补选 Mixkit、程序生成、模型生成、网络下载或其他曲库外音乐；没有合适曲目时标记 `blocked`，等待用户补充。
 - 用户要求“只用所给参考音频”视为允许 AI 在该本地曲库内自动选择。中选歌曲带演唱时，仍必须按 [sound-design-spec.md](references/sound-design-spec.md) 的“有人声歌曲例外”做低占比、低人声底床；不得直接循环副歌或让歌词与旁白并列。
@@ -249,7 +249,7 @@ python3 <skill_root>/scripts/validate_package.py \
 9. 先运行 `build_target_cover_title_page.py` 生成封面基底页和书名封面同页定帧。水滴声触发时，必须以“书名＋真实封面＋背景”的同页定帧为输入，对整页做连续位移映射；书名、封面文字、边缘和背景必须同步低幅折射，0.30–0.50 秒内起伏并连续恢复。水波恢复后不切目标主画面，继续保持 `target_cover_title_page_asset` 到 `body_voice_start`；只有正文第一句开始时才切入第一张正文画面。手机预览中看不出“书名口播全程保持封面”的一律判失败。
 10. 生成 `opening-vNNN.json` 并逐帧检查 0–6 秒。
 
-片头声音不得重新设计，必须引用 `music-cue-vNNN.json` 的钩子、遮罩、动态轮播区间和锁书配置。发条齿轮声从最终计划的 `carousel_start` 连续播放到 `carousel_end`，随区间裁切，不按封面数重复触发。将最终 `carousel-plan-vNNN.json`、`mask-source-vNNN.mp4`、`opening-mask-plan-vNNN.json`、`masked-keyword-expand-vNNN.mp4` 和 `opening-vNNN.json` 全部登记到 `manifest.steps.visual_package.artifacts`，剪映草稿也必须将遮罩源视频保留在 `Resources/local_media/`。
+片头声音不得重新设计，必须引用 `music-cue-vNNN.json` 的钩子、遮罩、动态轮播区间和锁书配置。发条齿轮声从最终计划的 `carousel_start` 只播放一次原声并在自身自然尾音处结束；轮播比原声长时后段留给 BGM 和旁白，禁止循环、复制、拼接第二遍或按封面数重复触发。原声长于轮播时才在 `carousel_end` 裁切并短淡出。将最终 `carousel-plan-vNNN.json`、`mask-source-vNNN.mp4`、`opening-mask-plan-vNNN.json`、`masked-keyword-expand-vNNN.mp4` 和 `opening-vNNN.json` 全部登记到 `manifest.steps.visual_package.artifacts`，剪映草稿也必须将遮罩源视频保留在 `Resources/local_media/`。
 
 真实 `timing-vNNN.json` 完成后立即生成 `timing-bind-vNNN.json`，逐个释放已经具备原始素材的规格化、字幕时码、片头微调和混音任务；后到素材满足依赖时自行继续，不设“四条分支全部完成才开始”的屏障。全部最终节点完成后，把 `sound_package` 与 `visual_package` 同时设为 `awaiting_confirmation`，一次性交付混音试听、实测时长、0–6 秒片头预览、正文分镜与动态说明。
 
@@ -257,6 +257,7 @@ python3 <skill_root>/scripts/validate_package.py \
 
 使用配音实际时间轴，不使用预估时间。
 
+- 字幕时码必须来自最终配音的真实逐字/逐词时间戳，不能照搬脚本估算段落。TTS 没有可靠字级时间戳时，必须对最终配音做一次强制对齐或 ASR 词级复测；每张字幕从该意群首个可听字出现，保持到末个可听字结束，静音停顿不提前挂出下一张字幕。
 - 中文每卡 5–14 字，最多 16 字，默认一行。
 - 字幕在该意群开始时整段直接显示并保持到该意群结束，不使用逐字、打字机、按词跳出或逐渐补全。
 - 片头字幕属于同一条 `captionTrack`：必须覆盖遮罩阶段的配音意群，并与正文使用相同的底部字号、字体和整段显示规则；禁止从 `body_voice_start` 才创建第一张字幕。

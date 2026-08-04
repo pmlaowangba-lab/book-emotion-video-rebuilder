@@ -29,8 +29,37 @@ def run(command: list[str]) -> None:
     subprocess.run(command, check=True)
 
 
+def media_duration(path: Path) -> float:
+    result = subprocess.run(
+        [
+            "ffprobe", "-v", "error", "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1", str(path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return float(result.stdout.strip())
+
+
 def read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def resolve_versioned_asset(project: Path, directory: str, stem: str, requested_version: str, suffix: str) -> Path:
+    """Resolve the requested asset, falling back to the newest earlier version."""
+    requested = project / directory / f"{stem}-{requested_version}{suffix}"
+    if requested.is_file():
+        return requested
+    requested_number = int(requested_version[1:])
+    candidates = []
+    for candidate in (project / directory).glob(f"{stem}-v[0-9][0-9][0-9]{suffix}"):
+        number = int(candidate.stem.rsplit("-v", 1)[1])
+        if number <= requested_number:
+            candidates.append((number, candidate))
+    if not candidates:
+        raise FileNotFoundError(requested)
+    return max(candidates, key=lambda item: item[0])[1]
 
 
 def write_json(path: Path, value: dict) -> None:
@@ -119,6 +148,15 @@ def active_caption(captions: list[dict], time_seconds: float) -> Optional[dict]:
 
 
 def build_opening_track(opening: dict) -> list[dict]:
+    body_voice_start = float(opening["body_voice_start"])
+    hero_cut_at = opening.get("hero_cut_at")
+    if hero_cut_at is None:
+        hero_cut_at = opening.get("waterdrop_lock_response", {}).get("hero_cut_at")
+    if hero_cut_at is not None and float(hero_cut_at) < body_voice_start - (1 / FPS):
+        raise ValueError(
+            f"hero_cut_at={float(hero_cut_at):.6f} 早于 body_voice_start={body_voice_start:.6f}，"
+            "书名口播期间必须保持真实书封"
+        )
     title_binding = opening.get("target_cover_title_binding", {})
     cover_start = float(opening.get("target_cover_hold_start", 4.1))
     cover_end = float(opening.get("target_cover_hold_end", 4.85))
@@ -139,7 +177,7 @@ def build_opening_track(opening: dict) -> list[dict]:
     track.extend([
         {"id": "target-cover-hold", "start": cover_start, "end": cover_end, "asset": opening.get("target_cover_title_page_asset") or opening.get("target_cover_base_asset") or opening.get("target_cover_hold_asset"), "transition_in": "hard_cut", "transition_out": "hard_cut", "motion": {"type": "snap_settle", "scale_start": 1.02, "scale_end": 1.0}, "title_binding": title_binding},
         {"id": "target-cover-waterwave-page", "start": float(wave["visual_start"]), "end": float(wave["visual_end"]), "wave_trigger_at": float(wave["wave_trigger_at"]), "asset": wave["effect_asset"], "source_page_asset": wave.get("source_page_asset"), "includes_title_layer": wave.get("includes_title_layer", False), "layer": "page_effect", "effect_on": "entire_page", "motion": {"type": "full_frame_displacement_map", "page_deformation": True, "overlay_graphic": False, "visible_ring": False}},
-        {"id": "target-lock", "start": float(opening["target_lock_start"]), "end": float(opening["body_voice_start"]), "asset": opening.get("target_lock_hold_asset") or opening.get("target_cover_title_page_asset") or opening.get("target_cover_base_asset") or opening.get("target_cover_hold_asset"), "transition_in": "hard_cut", "transition_out": "hard_cut", "motion": {"type": "cover_title_hold", "scale_start": 1.0, "scale_end": 1.0}, "title_motion": opening["title_motion"], "cover_visible_while_title_spoken": True},
+        {"id": "target-lock", "start": float(opening["target_lock_start"]), "end": body_voice_start, "asset": opening.get("target_lock_hold_asset") or opening.get("target_cover_title_page_asset") or opening.get("target_cover_base_asset") or opening.get("target_cover_hold_asset"), "transition_in": "hard_cut", "transition_out": "hard_cut", "motion": {"type": "cover_title_hold", "scale_start": 1.0, "scale_end": 1.0}, "title_motion": opening["title_motion"], "cover_visible_while_title_spoken": True},
     ])
     return track
 
@@ -336,6 +374,15 @@ def main() -> int:
             capture.release()
 
     audio_mix = project / f"06-配乐音效/audio-mix-preview-{sound_version}.wav"
+    bgm_asset = resolve_versioned_asset(project, "06-配乐音效", "bgm", sound_version, ".wav")
+    carousel_sfx_asset = project / f"06-配乐音效/sfx-carousel-{sound_version}.wav"
+    carousel_sfx_start = float(opening["carousel_start"])
+    carousel_sfx_end = min(
+        float(opening["carousel_end"]),
+        carousel_sfx_start + media_duration(carousel_sfx_asset),
+    )
+    opening["carousel_sfx_asset"] = str(carousel_sfx_asset.relative_to(project))
+    opening["carousel_sfx_end"] = carousel_sfx_end
     run([
         "ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(picture_path), "-i", str(audio_mix),
         "-filter_complex", f"[1:a]apad=pad_dur=0.1,atrim=0:{duration:.6f},loudnorm=I=-9.8:LRA=3:TP=-1.2,alimiter=limit=0.75:attack=5:release=50:level=false[a]",
@@ -399,8 +446,8 @@ def main() -> int:
         "captionTrack": captions,
         "audioTrack": [
             {"id": f"voice-{voice_version}", "type": "voice", "start": 0.0, "end": duration, "asset": f"05-配音/voice-{voice_version}.wav", "volume": 1.0},
-            {"id": f"bgm-{sound_version}", "type": "bgm", "start": 0.0, "end": duration, "asset": f"06-配乐音效/bgm-{sound_version}.wav", "volume": 1.0, "source_scope": "user_provided_local_file"},
-            {"id": f"sfx-carousel-{sound_version}", "type": "sfx", "start": float(opening["carousel_start"]), "end": float(opening["carousel_end"]), "asset": f"06-配乐音效/sfx-carousel-{sound_version}.wav", "volume": 1.0},
+            {"id": bgm_asset.stem, "type": "bgm", "start": 0.0, "end": duration, "asset": str(bgm_asset.relative_to(project)), "volume": 1.0, "source_scope": "user_provided_local_file"},
+            {"id": f"sfx-carousel-{sound_version}", "type": "sfx", "start": carousel_sfx_start, "end": carousel_sfx_end, "asset": str(carousel_sfx_asset.relative_to(project)), "volume": 1.0, "playback_mode": "single_pass", "repeat_count": 1},
             {"id": f"sfx-waterdrop-{sound_version}", "type": "sfx", "start": float(opening["waterdrop_lock_response"]["sfx_at"]), "end": float(opening["target_lock_end"]), "asset": f"06-配乐音效/sfx-lock-{sound_version}.wav", "volume": 1.0},
         ],
         "bookMeta": {"start": float(opening.get("target_cover_title_binding", {}).get("title_start", opening["target_lock_start"])), "end": duration, "title": title, "author": author, "cover": "01-书籍资料/cover-v001.jpg", "waterwave_baked_title_interval": [float(opening["waterdrop_lock_response"]["visual_start"]), float(opening["waterdrop_lock_response"]["visual_end"])]},

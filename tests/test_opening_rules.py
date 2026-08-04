@@ -64,6 +64,33 @@ class OpeningRulesTest(unittest.TestCase):
         self.assertEqual(target_lock["end"], opening["body_voice_start"])
         self.assertEqual(target_lock["motion"]["type"], "cover_title_hold")
 
+    def test_rejects_hero_cut_before_body_voice_starts(self) -> None:
+        opening = {
+            "target_hero_asset": "10-片头字幕/target-hero.mp4",
+            "masked_keyword_video_asset": "10-片头字幕/masked-keyword.mp4",
+            "carousel_start": 2.9,
+            "carousel_cards": [],
+            "card_durations": [],
+            "target_cover_hold_start": 5.83,
+            "target_cover_hold_end": 6.58,
+            "target_cover_title_page_asset": "10-片头字幕/target-cover-title-page.png",
+            "target_cover_title_binding": {"mode": "same_page_as_cover"},
+            "waterdrop_lock_response": {
+                "visual_start": 5.93,
+                "visual_end": 6.33,
+                "wave_trigger_at": 5.93,
+                "effect_asset": "10-片头字幕/waterwave.mp4",
+            },
+            "target_lock_start": 6.58,
+            "target_lock_end": 6.98,
+            "body_voice_start": 6.98,
+            "title_motion": {"type": "cover_page_title_settle"},
+            "hero_cut_at": 6.10,
+        }
+
+        with self.assertRaisesRegex(ValueError, "hero_cut_at"):
+            RENDER.build_opening_track(opening)
+
 
 if __name__ == "__main__":
     unittest.main()
