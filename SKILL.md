@@ -9,8 +9,7 @@ description: 从一本真实书籍出发，用陌言样例的情绪文案结构�
 
 ## 先读这些规格
 
-- 执行选书、文案、字幕或发布文案前，完整读取 `../../../01-老王写作生成器/4、老王-写作风格/SKILL.md`。
-- 生成或重写逐字稿前，必须完整读取 [emotional-script-spec.md](references/emotional-script-spec.md)。该规格源自线程 `019fb90e-e259-7fa0-b0b5-1ce0c8179a03` 的三条陌言样例拆解。
+- 生成或重写逐字稿前，必须完整读取 [emotional-script-spec.md](references/emotional-script-spec.md)。该规格源自陌言情绪读书样例拆解，开源版已自包含，不依赖外部写作 Skill。
 - 制作分镜、片头、字幕、配音或时间轴时，完整读取 [reference-editing-spec.md](references/reference-editing-spec.md)。
 - 设计“十二”式片头或明亮动态正文时，完整读取 [shier-template-frame-analysis.md](references/shier-template-frame-analysis.md)。
 - 设计 0–5 秒片头时，完整读取 [opening-interaction-spec.md](references/opening-interaction-spec.md)。
