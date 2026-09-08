@@ -1,25 +1,36 @@
+# macOS
 .DS_Store
+._*
+
+# Python
 __pycache__/
 *.py[cod]
 .venv/
 venv/
-.env
-*.env
-!assets/volcengine.env.example
-output/
-*.log
-assets/bgm-library/*.mp3
-assets/bgm-library/*.wav
-assets/bgm-library/*.flac
-assets/bgm-library/*.m4a
-dist/
-build/
 
-# 本地 AI 模型及 Hugging Face 缓存不进入仓库
-models/
-**/.cache/huggingface/
-*.safetensors
-*.gguf
-*.ckpt
-*.pth
-*.pt
+# Secrets — 绝不提交
+assets/volcengine.env
+.env
+.env.*
+
+# 本地生产产物（案例见 examples/）
+output/
+
+# BGM 音频文件需用户自行提供，不提交版权音乐
+assets/bgm-library/*.mp3
+assets/bgm-library/*.flac
+assets/bgm-library/*.wav
+assets/bgm-library/*.m4a
+
+# 片头遮罩视频可据 manifest 从 Pexels 下载
+assets/opening-mask-video-library/*.mp4
+
+# 字体需用户自行安装
+assets/fonts/*.ttf
+assets/fonts/*.otf
+
+# Editor
+.vscode/
+.idea/
+*.log
+*.tmp
